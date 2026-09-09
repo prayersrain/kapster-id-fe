@@ -1,0 +1,7 @@
+import { Button } from './ui/Button';
+const plans=[
+  {name:'Starter',sub:'Cocok untuk barbershop kecil yang baru memulai.',price:'Rp 149.000',items:['1 outlet','Fitur dasar','Support via chat']},
+  {name:'Pro',sub:'Pilihan terbaik untuk barbershop yang ingin berkembang.',price:'Rp 299.000',items:['Hingga 3 outlet','Semua fitur','Laporan lengkap','Priority support'],hot:true},
+  {name:'Business',sub:'Untuk barbershop dengan multi-outlet dan tim besar.',price:'Rp 599.000',items:['Outlet tak terbatas','Semua fitur premium','Kustomisasi sesuai kebutuhan','Dedicated support']}
+];
+export function Pricing(){return <section className="section pricing" id="harga"><div className="container"><div className="section-head"><div><div className="eyebrow">PAKET HARGA</div><h2>Pilih Paket yang Sesuai dengan Kebutuhan Anda.</h2></div><a href="#kontak">Lihat perbandingan lengkap →</a></div><div className="price-grid">{plans.map(p=><article className={`price-card ${p.hot?'hot':''}`} key={p.name}>{p.hot&&<span className="popular">Paling Populer</span>}<h3>{p.name}</h3><p>{p.sub}</p><div className="price"><strong>{p.price}</strong><span>/ bulan</span></div><ul>{p.items.map(x=><li key={x}>✓ {x}</li>)}</ul><Button variant={p.hot?'gold':'outline'} href={`mailto:hello@kapster.id?subject=${encodeURIComponent(`Minat paket ${p.name} Kapster.id`)}`}>{p.name==='Business'?'Hubungi Kami':'Mulai Sekarang'}</Button></article>)}</div></div></section>}

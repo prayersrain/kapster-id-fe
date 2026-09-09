@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Ilustrasi kapster sedang melayani customer</title>
+  <desc id="desc">Ilustrasi vektor interior barbershop gelap dengan kapster sedang memotong rambut customer.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101010"/><stop offset=".58" stop-color="#302417"/><stop offset="1" stop-color="#111"/></linearGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9a277"/><stop offset="1" stop-color="#8d5b3f"/></linearGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#232323"/><stop offset="1" stop-color="#0d0d0d"/></linearGradient>
+    <linearGradient id="apron" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6b4930"/><stop offset="1" stop-color="#2a1d15"/></linearGradient>
+    <radialGradient id="lamp"><stop stop-color="#ffd58a" stop-opacity=".95"/><stop offset="1" stop-color="#d8943d" stop-opacity="0"/></radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <g opacity=".6">
+    <rect x="70" y="70" width="340" height="500" rx="16" fill="#0a0a0a" stroke="#755232" stroke-width="8"/>
+    <rect x="1120" y="75" width="360" height="510" rx="16" fill="#0c0c0c" stroke="#5b412b" stroke-width="8"/>
+    <g fill="#b47d3e" opacity=".45"><rect x="104" y="120" width="265" height="10"/><rect x="104" y="184" width="220" height="10"/><rect x="1184" y="130" width="220" height="10"/><rect x="1184" y="194" width="260" height="10"/></g>
+    <rect x="0" y="700" width="1600" height="300" fill="#0b0b0b"/>
+    <path d="M40 720h420v170H40zM1140 680h390v210h-390z" fill="#1e1915"/>
+  </g>
+  <g filter="url(#soft)" opacity=".7"><circle cx="520" cy="115" r="110" fill="url(#lamp)"/><circle cx="980" cy="120" r="110" fill="url(#lamp)"/><circle cx="1370" cy="150" r="95" fill="url(#lamp)"/></g>
+  <g opacity=".9"><path d="M500 0v72" stroke="#6a4a2c" stroke-width="8"/><circle cx="500" cy="104" r="25" fill="#f0bd72"/><path d="M980 0v76" stroke="#6a4a2c" stroke-width="8"/><circle cx="980" cy="108" r="25" fill="#f0bd72"/></g>
+  <!-- Customer -->
+  <g transform="translate(930 525)">
+    <ellipse cx="120" cy="405" rx="270" ry="155" fill="#191919"/>
+    <path d="M-90 390c40-160 160-230 300-210 120 18 205 96 244 228l-20 145H-80z" fill="#181818"/>
+    <ellipse cx="132" cy="112" rx="123" ry="138" fill="url(#skin)"/>
+    <path d="M20 86c8-110 90-158 180-136 58 14 98 66 92 126-60-40-162-58-272 10z" fill="#151515"/>
+    <path d="M30 74c31-58 85-82 144-78 48 4 88 23 112 60-71-25-164-20-256 18z" fill="#080808"/>
+    <path d="M45 196c50 52 127 67 188 28" fill="none" stroke="#7f4c37" stroke-width="9" stroke-linecap="round"/>
+    <path d="M10 214c-70 40-120 116-128 196" fill="none" stroke="#303030" stroke-width="55" stroke-linecap="round"/>
+  </g>
+  <!-- Barber -->
+  <g transform="translate(530 205)">
+    <path d="M40 690c-20-245 26-440 180-510 125-56 281-12 354 120 50 91 54 222 38 390z" fill="url(#shirt)"/>
+    <path d="M188 285c67-30 151-23 214 16l48 392H156z" fill="url(#apron)" opacity=".95"/>
+    <path d="M168 279l22 55M423 290l-24 54" stroke="#b38a61" stroke-width="18" stroke-linecap="round"/>
+    <ellipse cx="298" cy="130" rx="108" ry="126" fill="url(#skin)"/>
+    <path d="M194 124c-6-94 51-162 139-156 75 5 125 56 130 134-48-30-120-52-214-24-14 4-33 21-55 46z" fill="#171717"/>
+    <path d="M200 87c24-67 86-99 143-89 42 7 79 34 98 72-67-25-136-20-241 17z" fill="#0d0d0d"/>
+    <circle cx="260" cy="135" r="6" fill="#1b1714"/><circle cx="343" cy="135" r="6" fill="#1b1714"/>
+    <path d="M277 196c27 18 57 18 81 0" stroke="#704635" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <!-- arms/tools -->
+    <path d="M210 360c-95 40-154 117-192 222" stroke="url(#skin)" stroke-width="54" fill="none" stroke-linecap="round"/>
+    <path d="M420 360c105 20 164 86 204 154" stroke="url(#skin)" stroke-width="52" fill="none" stroke-linecap="round"/>
+    <path d="M10 574c70 10 164-8 237-58" stroke="#151515" stroke-width="40" fill="none" stroke-linecap="round"/>
+    <path d="M620 506c-40 12-95 7-135-17" stroke="#151515" stroke-width="38" fill="none" stroke-linecap="round"/>
+    <g transform="translate(20 545) rotate(-12)"><path d="M0 0h92" stroke="#c9c9c9" stroke-width="8"/><path d="M62-22l30 22-30 22" fill="none" stroke="#c9c9c9" stroke-width="6"/></g>
+    <g transform="translate(545 494) rotate(25)"><rect x="0" y="0" width="15" height="95" rx="7" fill="#d4d4d4"/><path d="M14 8h34v10H14M14 28h34v10H14M14 48h34v10H14" stroke="#d4d4d4" stroke-width="5"/></g>
+  </g>
+  <rect width="1600" height="1000" fill="url(#bg)" opacity=".08"/>
+</svg>

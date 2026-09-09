@@ -1,0 +1,2 @@
+import { Button } from './ui/Button';
+export function FinalCTA() { return <section className="final-cta"><div className="container cta-inner"><div><h2>Siap Membawa Barbershop Anda<br />ke Level Selanjutnya?</h2><p>Bergabunglah dengan 500+ barbershop yang sudah mempercayakan operasional mereka pada Kapster.id.</p></div><div><Button href="#kontak">Coba Gratis Sekarang</Button><div className="cta-checks"><span>✓ Tanpa kartu kredit</span><span>✓ Setup hanya beberapa menit</span></div></div></div></section> }

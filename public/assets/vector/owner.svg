@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-labelledby="title">
+<title id="title">Ilustrasi owner barbershop</title>
+<defs><linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5b08a"/><stop offset="1" stop-color="#9d684b"/></linearGradient><linearGradient id="shirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#252525"/><stop offset="1" stop-color="#090909"/></linearGradient><radialGradient id="halo"><stop stop-color="#e2bb83" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="820" fill="#fff7ed"/><circle cx="360" cy="300" r="300" fill="url(#halo)"/>
+<path d="M150 820c18-210 83-337 210-365 133-30 225 43 250 365z" fill="url(#shirt)"/>
+<ellipse cx="360" cy="240" rx="128" ry="145" fill="url(#skin)"/>
+<path d="M236 225c-5-116 66-181 153-174 76 6 128 62 132 149-65-47-172-61-285 25z" fill="#171717"/>
+<path d="M250 160c35-79 105-108 169-91 42 11 77 43 94 84-75-25-153-17-263 7z" fill="#0c0c0c"/>
+<circle cx="317" cy="244" r="7" fill="#1b1714"/><circle cx="405" cy="244" r="7" fill="#1b1714"/>
+<path d="M326 314c31 24 72 24 102 0" fill="none" stroke="#784c3a" stroke-width="9" stroke-linecap="round"/>
+<path d="M198 580c100 48 213 79 335 103" fill="none" stroke="url(#skin)" stroke-width="66" stroke-linecap="round"/>
+<path d="M522 570c-111 62-214 100-332 126" fill="none" stroke="url(#skin)" stroke-width="66" stroke-linecap="round"/>
+<path d="M183 585c28-49 62-82 103-105" stroke="#161616" stroke-width="74" stroke-linecap="round"/>
+<path d="M536 574c-22-50-53-85-95-110" stroke="#161616" stroke-width="74" stroke-linecap="round"/>
+</svg>

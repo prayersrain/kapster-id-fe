@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" role="img" aria-labelledby="title">
+<title id="title">Interior barbershop vektor</title>
+<defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0b0b0b"/><stop offset=".55" stop-color="#3a2a1d"/><stop offset="1" stop-color="#111"/></linearGradient><radialGradient id="l"><stop stop-color="#ffc86c" stop-opacity=".9"/><stop offset="1" stop-color="#d18932" stop-opacity="0"/></radialGradient></defs>
+<rect width="1600" height="480" fill="url(#b)"/>
+<g opacity=".55" stroke="#9c7447" fill="#151515"><rect x="560" y="42" width="240" height="270" rx="12" stroke-width="8"/><rect x="860" y="42" width="240" height="270" rx="12" stroke-width="8"/><rect x="1160" y="42" width="240" height="270" rx="12" stroke-width="8"/></g>
+<g opacity=".75"><circle cx="680" cy="55" r="75" fill="url(#l)"/><circle cx="980" cy="55" r="75" fill="url(#l)"/><circle cx="1280" cy="55" r="75" fill="url(#l)"/></g>
+<g fill="#0b0b0b" stroke="#4f3b29" stroke-width="5"><path d="M625 330h125l25 92H600z"/><path d="M925 330h125l25 92H900z"/><path d="M1225 330h125l25 92H1200z"/><rect x="650" y="414" width="75" height="20" rx="6"/><rect x="950" y="414" width="75" height="20" rx="6"/><rect x="1250" y="414" width="75" height="20" rx="6"/></g>
+<path d="M0 408h1600" stroke="#715134" stroke-width="4" opacity=".55"/>
+</svg>

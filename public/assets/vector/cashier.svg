@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-labelledby="title">
+<title id="title">Ilustrasi kasir barbershop memegang tablet</title>
+<defs><linearGradient id="skin2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e3ad86"/><stop offset="1" stop-color="#945f43"/></linearGradient><linearGradient id="uniform" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#202020"/><stop offset="1" stop-color="#080808"/></linearGradient><radialGradient id="halo2"><stop stop-color="#b9c3cf" stop-opacity=".32"/><stop offset="1" stop-color="#f7f8fa" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="820" fill="#f7f8fa"/><circle cx="350" cy="300" r="300" fill="url(#halo2)"/>
+<path d="M138 820c20-219 92-340 222-364 132-25 225 53 248 364z" fill="url(#uniform)"/>
+<ellipse cx="350" cy="235" rx="122" ry="142" fill="url(#skin2)"/>
+<path d="M229 210c-4-108 63-174 148-169 73 4 126 56 132 140-75-48-171-51-280 29z" fill="#151515"/>
+<path d="M241 148c41-75 111-99 169-78 40 14 71 44 87 84-83-27-162-18-256-6z" fill="#090909"/>
+<circle cx="309" cy="240" r="6" fill="#1b1714"/><circle cx="393" cy="240" r="6" fill="#1b1714"/>
+<path d="M326 306c29 18 58 18 85 0" stroke="#754938" stroke-width="8" fill="none" stroke-linecap="round"/>
+<path d="M183 550c89 16 154 54 220 120" stroke="url(#skin2)" stroke-width="58" fill="none" stroke-linecap="round"/>
+<path d="M523 550c-68 30-117 72-164 126" stroke="url(#skin2)" stroke-width="58" fill="none" stroke-linecap="round"/>
+<rect x="265" y="525" width="230" height="165" rx="16" fill="#30343a" stroke="#696f77" stroke-width="8" transform="rotate(5 380 608)"/>
+<circle cx="383" cy="604" r="10" fill="#9098a3"/>
+</svg>

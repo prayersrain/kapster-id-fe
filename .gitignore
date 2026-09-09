@@ -1,0 +1,35 @@
+# Dependencies
+/node_modules/
+
+# Next.js
+/.next/
+/out/
+
+# Build dan testing
+/dist/
+/coverage/
+
+# Environment dan rahasia
+.env
+.env.*
+!.env.example
+
+# Deployment
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# OS dan editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
