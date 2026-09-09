@@ -1,76 +1,84 @@
-# Kapster.id Landing Page — Final UI Baseline
+# Kapster.id Landing Page
 
-Implementasi component-based dari landing page final Kapster.id.
+Landing page responsif untuk Kapster.id, platform SaaS yang membantu operasional barbershop mengelola booking, jadwal, kasir, customer, outlet, dan laporan dalam satu sistem.
 
-## Stack
+## Teknologi
+
 - Next.js 16
 - React 19
 - TypeScript
-- CSS custom
-- SVG untuk seluruh asset visual yang dikirim di folder `public/`
+- Custom CSS tanpa UI framework
+- Intersection Observer untuk animasi masuk yang ringan
 
-## Yang sudah diperbaiki
-- FAQ sekarang accordion interaktif berbasis React, bukan `<details>` placeholder.
-- Tombol **Lihat semua FAQ** dapat membuka/menutup seluruh jawaban.
-- Navigasi tidak lagi memakai `href="#"` yang membuat halaman lompat/error.
-- Navbar desktop menggunakan anchor ke section yang benar.
-- Mobile navigation sekarang memiliki hamburger menu yang berfungsi.
-- CTA, demo, pricing, FAQ, dan footer mempunyai target/link yang valid.
-- Mockup booking mempunyai select interaktif dan tombol pengecekan slot demo.
-- Semua section utama mempunyai `id` + `scroll-margin` agar sticky navbar tidak menutupi judul.
-- Focus state ditambahkan untuk penggunaan keyboard.
-- Asset lama PNG/JPG tidak lagi dipakai atau dikirim di folder `public/`.
+## Fitur antarmuka
 
-## Asset SVG
-Semua file di `public/` sekarang berformat SVG.
+- Hero dan product showcase dengan mockup dashboard Kapster.id.
+- Navigasi desktop dan menu hamburger mobile.
+- Layout responsif untuk desktop, tablet, dan mobile.
+- FAQ accordion aksesibel yang hanya membuka satu jawaban dalam satu waktu.
+- Transisi halus pada card, tombol, mockup, FAQ, dan container utama.
+- Dukungan `prefers-reduced-motion` untuk pengguna yang mengurangi animasi.
+- Focus state untuk navigasi keyboard.
+- Anchor setiap section disesuaikan dengan sticky header.
 
-### `public/assets/photo/*.svg`
-Dipakai sebagai default agar komposisi tetap sedekat mungkin dengan screenshot final. Karena foto asli berasal dari screenshot beresolusi rendah, file ini adalah **SVG container dengan image yang sudah di-upscale dan sharpen**. Ini menjaga gaya foto referensi sekaligus mengurangi blur ketika ditampilkan lebih besar.
+## Kebijakan aset visual
 
-> Catatan: mengubah foto menjadi SVG tidak otomatis menjadikan foto benar-benar vector. True vector tracing pada foto akan mengubah tampilan dan justru menjauh dari desain final.
+Aset foto yang dipakai pada halaman **tetap menggunakan WebP, bukan foto yang dibungkus di dalam SVG**.
 
-### `public/assets/vector/*.svg`
-Alternatif **100% vector** tanpa raster sama sekali. Bisa dipakai jika prioritas utama adalah ketajaman tak terbatas, dengan konsekuensi visual orang/interior menjadi ilustratif, bukan foto realistis.
+| Jenis aset | Format runtime | Penggunaan |
+| --- | --- | --- |
+| Foto hero, owner, kasir, testimonial, dan CTA | WebP | `public/assets/photo/*.webp` |
+| Mockup booking customer | PNG transparan | `public/assets/ui/booking-phone.png` |
+| Ikon UI dan logo | Inline SVG/DOM | Dirender langsung oleh komponen React |
+| Favicon | SVG | `public/favicon.svg` |
 
-Logo dan icon UI sudah berupa inline SVG/DOM sehingga tajam pada semua resolusi.
+Jadi, project ini tidak memakai SVG sebagai pengganti aset foto. SVG hanya digunakan untuk elemen yang memang bersifat vector seperti ikon, logo, dan favicon. File alternatif di `public/assets/vector/` dan sumber PNG di `public/assets/photo/png/` tidak direferensikan oleh halaman runtime saat ini.
 
-## Struktur komponen
-- `Header`
-- `Hero`
-- `TrustBar`
-- `Features`
-- `HowItWorks`
-- `Roles`
-- `ProductShowcase`
-- `Testimonials`
-- `Pricing`
-- `FAQ`
-- `FinalCTA`
-- `Footer`
-- `ui/Button`
-- `ui/Icon`
-- `ui/Logo`
-- `ui/DashboardMockup`
-- `ui/BookingPhone`
+## Struktur utama
+
+```text
+app/
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  Header.tsx
+  Hero.tsx
+  Features.tsx
+  HowItWorks.tsx
+  Roles.tsx
+  ProductShowcase.tsx
+  Testimonials.tsx
+  Pricing.tsx
+  FAQ.tsx
+  FinalCTA.tsx
+  Footer.tsx
+  MotionEffects.tsx
+  ui/
+public/
+  assets/photo/       # Foto WebP
+  assets/ui/          # Mockup UI raster
+  assets/vector/      # Alternatif vector, tidak dipakai runtime
+```
 
 ## Menjalankan project
+
 ```bash
 npm install
 npm run dev
 ```
 
-Lalu buka:
+Buka `http://localhost:3000` pada browser.
 
-```text
-http://localhost:3000
-```
-
-Untuk mengecek production build:
+## Validasi
 
 ```bash
+npm run typecheck
 npm run build
-npm run start
 ```
 
+`typecheck` memvalidasi TypeScript, sedangkan `build` memastikan project dapat dikompilasi sebagai production build Next.js.
+
 ## Catatan konten
-Nominal pricing pada mockup masih placeholder sampai keputusan pricing produk final dikunci. FAQ juga menggunakan wording konservatif untuk item yang masih berupa draft/usulan/dependensi di PRD.
+
+Nominal paket, klaim bisnis, serta kebijakan komersial masih berupa konten landing page dan perlu diverifikasi kembali sebelum digunakan pada peluncuran produksi.

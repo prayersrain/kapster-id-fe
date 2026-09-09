@@ -263,7 +263,7 @@ select:focus-visible {
 .report-card em { color: #25a660; font-size: 7px; font-style: normal; }
 .bar-chart { position: absolute; right: 13px; bottom: 14px; left: 165px; height: 102px; display: flex; align-items: flex-end; justify-content: space-around; gap: 7px; border-bottom: 1px solid #dce5f6; background: repeating-linear-gradient(to bottom, transparent 0 24px, #eef2f7 25px); }
 .bar-chart span { flex: 1; max-width: 24px; border-radius: 4px 4px 0 0; background: linear-gradient(#8ab1ff, #5887e7); }
-.hand-note { position: absolute; z-index: 4; font-family: "Comic Sans MS", cursive; font-size: 14px; line-height: 1.75; letter-spacing: .035em; word-spacing: .08em; }
+.hand-note { position: absolute; z-index: 4; font-family: "Comic Sans MS", cursive; font-size: 14px; line-height: 1.9; letter-spacing: .045em; word-spacing: .12em; }
 .note-a { left: -24px; bottom: -28px; width: 158px; transform: rotate(-7deg); }
 .note-b { top: -26px; right: -28px; width: 168px; transform: rotate(5deg); }
 .scribble-arrow { position: absolute; z-index: 4; fill: none; stroke: #393939; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
@@ -421,7 +421,7 @@ footer { padding: 51px 0 23px; border-top: 1px solid #eee; }
   .product-device-stage { --device-scale: .7; width: 100%; height: clamp(270px, 74vw, 330px); margin: 0; }
   .laptop { top: 28px; right: 0; width: 590px; transform: scale(var(--device-scale)); transform-origin: top right; }
   .product-visual .booking-phone-asset { top: 33px; right: auto; left: -10px; transform: scale(var(--device-scale)); transform-origin: top left; }
-  .hand-note { display: block; top: auto; bottom: 8px; width: 47%; font-size: clamp(11px, 3.25vw, 13px); line-height: 1.7; letter-spacing: .04em; word-spacing: .1em; }
+  .hand-note { display: block; top: auto; bottom: 8px; width: 47%; font-size: clamp(11px, 3.25vw, 13px); line-height: 1.9; letter-spacing: .045em; word-spacing: .12em; }
   .note-a { left: 7px; transform: rotate(-4deg); }
   .note-b { right: 7px; text-align: right; transform: rotate(3deg); }
   .scribble-arrow { display: none; }
