@@ -5,16 +5,16 @@ import { BookingPhone } from './ui/BookingPhone';
 export function ProductShowcase() {
   return <section className="section product" id="demo">
     <div className="container product-grid">
-      <div className="product-copy">
+      <div className="product-copy motion-reveal">
         <div className="eyebrow">BOOKING PUBLIK &amp; DASHBOARD</div>
         <h2>Pengalaman Modern<br />untuk Customer,<br />Kontrol Penuh untuk Anda.</h2>
         <p>Customer booking dengan mudah. Anda tetap punya kontrol penuh di belakang layar.</p>
         <Button href="#kontak">Lihat Demo Sistem</Button>
       </div>
-      <div className="product-visual">
+      <div className="product-visual motion-reveal">
         <div className="product-device-stage">
           <DashboardMockup laptop view="report" />
-          <BookingPhone idPrefix="showcase" />
+          <BookingPhone />
         </div>
         <div className="hand-note note-a">Tampilan booking<br />untuk customer</div>
         <svg className="scribble-arrow arrow-a" viewBox="0 0 100 48" aria-hidden="true"><path d="M4 40c24-2 43-8 65-22 7-4 13-8 23-10M82 4l11 4-5 11" /></svg>

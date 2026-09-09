@@ -8,7 +8,7 @@ export function Hero() {
     <div className="hero-media" aria-hidden="true"><img src="/assets/photo/hero-barber.webp" alt="" /></div>
     <div className="hero-overlay" />
     <div className="container hero-grid">
-      <div className="hero-copy">
+      <div className="hero-copy motion-reveal">
         <div className="eyebrow gold">SISTEM OPERASIONAL BARBERSHOP</div>
         <h1>Kelola Barbershop<br />Lebih Mudah,<br /><span>Kursi Selalu Terisi.</span></h1>
         <p>Kapster.id adalah SaaS untuk barbershop. Atur booking, jadwal, kasir, customer, dan laporan dalam satu sistem. Tanpa ribet. Tanpa spreadsheet.</p>
@@ -18,7 +18,7 @@ export function Hero() {
         </div>
         <div className="hero-benefits"><span><b>✓</b> Setup cepat</span><span><b>✓</b> Tanpa kartu kredit</span><span><b>✓</b> Didukung tim lokal</span></div>
       </div>
-      <div className="hero-product"><DashboardMockup /><BookingPhone idPrefix="hero" /></div>
+      <div className="hero-product motion-reveal"><DashboardMockup /><BookingPhone /></div>
     </div>
   </section>
 }

@@ -10,5 +10,6 @@ import { Pricing } from '../components/Pricing';
 import { FAQ } from '../components/FAQ';
 import { FinalCTA } from '../components/FinalCTA';
 import { Footer } from '../components/Footer';
+import { MotionEffects } from '../components/MotionEffects';
 
-export default function Home(){return <><Header/><main><Hero/><TrustBar/><Features/><HowItWorks/><Roles/><ProductShowcase/><Testimonials/><Pricing/><FAQ/><FinalCTA/></main><Footer/></>}
+export default function Home(){return <><MotionEffects/><Header/><main><Hero/><TrustBar/><Features/><HowItWorks/><Roles/><ProductShowcase/><Testimonials/><Pricing/><FAQ/><FinalCTA/></main><Footer/></>}

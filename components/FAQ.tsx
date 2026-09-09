@@ -30,41 +30,36 @@ const items = [
 ];
 
 export function FAQ() {
-  const [openItems, setOpenItems] = useState<Set<number>>(() => new Set());
-  const allOpen = openItems.size === items.length;
+  const [openItem, setOpenItem] = useState<number | null>(null);
   const columns = [
     items.map((item, index) => ({ item, index })).filter(({ index }) => index % 2 === 0),
     items.map((item, index) => ({ item, index })).filter(({ index }) => index % 2 === 1)
   ];
 
   function toggleItem(index: number) {
-    setOpenItems(current => {
-      const next = new Set(current);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  }
-
-  function toggleAll() {
-    setOpenItems(allOpen ? new Set() : new Set(items.map((_, index) => index)));
+    setOpenItem(current => current === index ? null : index);
   }
 
   return <section className="section faq" id="faq">
     <div className="container">
-      <div className="section-head">
+      <div className="section-head motion-reveal">
         <div><div className="eyebrow">PERTANYAAN YANG SERING DIAJUKAN</div><h2>Masih Ada Pertanyaan?</h2></div>
-        <button className="text-link" type="button" onClick={toggleAll}>{allOpen ? 'Tutup semua FAQ ↑' : 'Lihat semua FAQ →'}</button>
+        <a className="text-link" href="#kontak">Hubungi kami →</a>
       </div>
       <div className="faq-grid">
         {columns.map((column, columnIndex) => <div className="faq-column" key={columnIndex}>
           {column.map(({ item, index }) => {
-            const isOpen = openItems.has(index);
-            return <article className={`faq-item ${isOpen ? 'open' : ''}`} style={{ order: index }} key={item.q}>
-              <button className="faq-question" type="button" aria-expanded={isOpen} aria-controls={`faq-answer-${index}`} onClick={() => toggleItem(index)}>
-                <span>{item.q}</span><span className="faq-chevron" aria-hidden="true">⌄</span>
-              </button>
-              <div className="faq-answer" id={`faq-answer-${index}`} role="region" aria-hidden={!isOpen}>
+            const isOpen = openItem === index;
+            const questionId = `faq-question-${index}`;
+            const answerId = `faq-answer-${index}`;
+            return <article className={`faq-item motion-reveal ${isOpen ? 'open' : ''}`} style={{ order: index }} key={item.q}>
+              <h3 className="faq-heading">
+                <button className="faq-question" id={questionId} type="button" aria-expanded={isOpen} aria-controls={answerId} onClick={() => toggleItem(index)}>
+                  <span>{item.q}</span>
+                  <span className="faq-chevron" aria-hidden="true"><svg viewBox="0 0 20 20" focusable="false"><path d="m5 7.5 5 5 5-5" /></svg></span>
+                </button>
+              </h3>
+              <div className="faq-answer" id={answerId} role="region" aria-labelledby={questionId} aria-hidden={!isOpen}>
                 <div><p>{item.a}</p></div>
               </div>
             </article>;
