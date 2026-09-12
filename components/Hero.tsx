@@ -13,7 +13,7 @@ export function Hero() {
         <h1>Kelola Barbershop<br />Lebih Mudah,<br /><span>Kursi Selalu Terisi.</span></h1>
         <p>Kapster.id adalah SaaS untuk barbershop. Atur booking, jadwal, kasir, customer, dan laporan dalam satu sistem. Tanpa ribet. Tanpa spreadsheet.</p>
         <div className="hero-actions">
-          <Button href="#kontak">Coba Gratis</Button>
+          <Button href="/register">Coba Gratis</Button>
           <a className="btn btn-outline-light" href="#demo"><Icon name="play" size={18} />Lihat Demo</a>
         </div>
         <div className="hero-benefits"><span><b>✓</b> Setup cepat</span><span><b>✓</b> Tanpa kartu kredit</span><span><b>✓</b> Didukung tim lokal</span></div>

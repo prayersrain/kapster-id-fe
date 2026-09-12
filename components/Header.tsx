@@ -20,8 +20,8 @@ export function Header(){
         {nav.map(([label, href]) => <a key={href} href={href}>{label}</a>)}
       </nav>
       <div className="nav-actions">
-        <a className="login" href="#kontak">Masuk</a>
-        <Button className="nav-cta" href="#kontak">Coba Gratis</Button>
+        <a className="login" href="/login">Masuk</a>
+        <Button className="nav-cta" href="/register">Coba Gratis</Button>
         <button className="menu-toggle" type="button" aria-label={open ? 'Tutup menu' : 'Buka menu'} aria-expanded={open} onClick={() => setOpen(v => !v)}>
           <span/><span/><span/>
         </button>
@@ -30,7 +30,7 @@ export function Header(){
     {open && <nav className="mobile-nav" aria-label="Navigasi mobile">
       <div className="container">
         {nav.map(([label, href]) => <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>)}
-        <a href="#kontak" onClick={() => setOpen(false)}>Masuk / Hubungi</a>
+        <a href="/login" onClick={() => setOpen(false)}>Masuk</a>
       </div>
     </nav>}
   </header>

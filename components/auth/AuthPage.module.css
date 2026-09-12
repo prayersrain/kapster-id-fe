@@ -1,0 +1,43 @@
+.page { min-height: 100svh; display: grid; grid-template-columns: minmax(360px, .9fr) minmax(520px, 1.1fr); background: var(--cream); color: var(--ink); }
+.visualPane { position: relative; display: flex; min-height: 100svh; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 37px clamp(32px, 6vw, 92px); color: #fff; background: linear-gradient(135deg, rgba(16, 17, 20, .96), rgba(40, 28, 18, .87)), url('/assets/photo/hero-barber.webp') center/cover; }
+.visualPane::after { position: absolute; right: -100px; bottom: -150px; width: 430px; height: 430px; border: 1px solid rgba(218, 162, 83, .24); border-radius: 50%; box-shadow: 0 0 0 42px rgba(218, 162, 83, .06), 0 0 0 84px rgba(218, 162, 83, .04); content: ''; }
+.visualLogo { position: relative; z-index: 1; width: fit-content; color: #fff; }
+.visualLogo :global(.logo-lockup) { color: #fff; }
+.visualContent { position: relative; z-index: 1; max-width: 510px; margin-block: auto; padding-block: 70px; }
+.kicker, .formEyebrow { display: block; color: var(--gold); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+.kicker { color: #e1a554; }
+.visualContent h1 { max-width: 480px; margin: 17px 0 20px; font-size: clamp(38px, 4vw, 58px); line-height: .99; letter-spacing: -.055em; }
+.visualContent h1 em { color: #e0a254; font-style: normal; }
+.visualContent > p { max-width: 420px; color: rgba(255, 255, 255, .72); font-size: 16px; line-height: 1.7; }
+.visualContent ul { display: grid; gap: 13px; margin: 34px 0 0; padding: 0; color: rgba(255, 255, 255, .9); font-size: 13px; list-style: none; }
+.visualContent li { display: flex; align-items: center; gap: 10px; }
+.visualContent li span { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #201810; background: #dda053; font-weight: 800; }
+.visualFooter { position: relative; z-index: 1; color: rgba(255, 255, 255, .48); font-size: 11px; letter-spacing: .06em; }
+.formPane { display: flex; min-height: 100svh; flex-direction: column; justify-content: center; padding: 50px clamp(28px, 7vw, 110px); background: #fff; }
+.mobileLogo { display: none; }
+.formWrap { width: min(100%, 480px); margin: auto; }
+.formWrap h2 { margin: 14px 0 9px; font-size: clamp(30px, 3vw, 42px); line-height: 1.05; letter-spacing: -.045em; }
+.formDescription { max-width: 430px; margin: 0 0 30px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.form { display: grid; gap: 18px; }
+.field { display: grid; gap: 8px; color: #34363b; font-size: 12px; font-weight: 700; }
+.field input { width: 100%; min-height: 48px; padding: 13px 15px; border: 1px solid #ddd8d1; border-radius: 6px; outline: 0; color: var(--ink); background: #fff; font: inherit; font-size: 14px; font-weight: 400; transition: border-color .18s ease, box-shadow .18s ease; }
+.field input::placeholder { color: #aaa7a2; }
+.field input:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(189, 130, 57, .12); }
+.fieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.formMeta { display: flex; align-items: center; justify-content: space-between; margin-top: -3px; color: var(--muted); font-size: 12px; }
+.formMeta a, .formSwitch a, .backLink { color: #a96f2f; font-weight: 700; }
+.remember, .consent { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 12px; font-weight: 400; }
+.remember input, .consent input { width: 15px; height: 15px; margin: 0; accent-color: var(--gold); }
+.consent { color: var(--muted); line-height: 1.5; }
+.submit { display: flex; min-height: 50px; align-items: center; justify-content: space-between; margin-top: 5px; padding: 0 17px 0 20px; border: 0; border-radius: 6px; cursor: pointer; color: #fff; background: #24201c; font: inherit; font-size: 13px; font-weight: 700; transition: background .18s ease, transform .18s ease; }
+.submit span { color: #dfa255; font-size: 20px; font-weight: 400; }
+.submit:hover { background: #3a3027; transform: translateY(-1px); }
+.formSwitch { margin: 25px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+.formLegal { width: min(100%, 480px); margin: auto auto 0; color: #aaa7a2; font-size: 10px; line-height: 1.6; text-align: center; }
+.error { margin: -4px 0 0; color: #a14e3d; font-size: 12px; }
+.resend, .backLink { border: 0; cursor: pointer; background: transparent; font: inherit; font-size: 12px; text-align: center; }
+.resend { color: var(--muted); }
+.codeInput { max-width: 190px; font-size: 24px !important; letter-spacing: .35em; text-align: center; }
+.backLink { text-decoration: none; }
+@media (max-width: 800px) { .page { display: block; } .visualPane { display: none; } .formPane { min-height: 100svh; padding: 28px 22px 24px; } .mobileLogo { display: block; width: min(100%, 480px); margin: 0 auto 52px; } .formWrap { margin: 0 auto; } .formLegal { margin-top: 44px; } }
+@media (max-width: 480px) { .fieldGrid { grid-template-columns: 1fr; gap: 18px; } .formWrap h2 { font-size: 31px; } .mobileLogo { margin-bottom: 42px; } }
