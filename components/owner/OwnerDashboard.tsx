@@ -183,8 +183,13 @@ function TablePerson({ person, compact = false }: { person: number; compact?: bo
   return <span className={styles.personCell}><Avatar person={person} size={compact ? 29 : 34} /><span><strong>{data.name}</strong>{!compact && <small>{data.phone}</small>}</span></span>;
 }
 
+function OnboardingBanner() {
+  return <section className={styles.onboardingBanner} aria-labelledby="onboarding-title"><div className={styles.onboardingProgress}><strong>4</strong><span>/ 10 langkah<br />selesai</span></div><div className={styles.onboardingCopy}><span className={styles.onboardingKicker}>SETUP AKUN</span><h2 id="onboarding-title">Lengkapi setup bisnis Anda</h2><p>Selesaikan onboarding agar booking dapat dipublikasikan dan tim siap bekerja.</p><div className={styles.onboardingTrack}><span style={{ width: '40%' }} /></div></div><a className={styles.onboardingAction} href="/onboarding">Lanjutkan Setup <Glyph name="arrow" size={16} /></a></section>;
+}
+
 function Overview({ notify }: { notify: (message: string) => void; }) {
   return <div className={styles.pageContent}>
+    <OnboardingBanner />
     <PageHeading title="Selamat datang, Andi!" subtitle="Berikut ringkasan performa Garasi Barber di semua outlet."><FilterBox label="Periode" value="1 – 7 Sep 2026" icon="calendar" /><FilterBox label="Outlet" value="Semua Outlet" icon="store" /></PageHeading>
     <div className={styles.overviewLayout}>
       <div className={styles.overviewMain}>
