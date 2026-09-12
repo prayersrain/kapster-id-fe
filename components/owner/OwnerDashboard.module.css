@@ -183,6 +183,7 @@
 .profileButton > span:last-child { font-size: 17px; }
 
 .workspace { min-height: 0; flex: 1; overflow: auto; background: radial-gradient(circle at 70% 0, rgba(218, 204, 186, .14), transparent 26%), var(--owner-bg); }
+.pageContent { width: 100%; max-width: 1680px; min-width: 980px; margin: 0 auto; padding: 25px 28px 16px; }
 .onboardingBanner { display: flex; align-items: center; gap: 18px; min-height: 108px; padding: 17px 20px; margin-bottom: 18px; border: 1px solid #ead8bd; border-radius: 10px; background: linear-gradient(105deg, #fffaf2, #fff 72%); box-shadow: 0 5px 18px rgba(56, 43, 25, .04); }
 .onboardingProgress { width: 67px; height: 67px; display: flex; flex: 0 0 auto; align-items: center; justify-content: center; border: 5px solid #e8d1ad; border-right-color: #a8732d; border-radius: 50%; color: #9b6929; transform: rotate(-38deg); }
 .onboardingProgress strong, .onboardingProgress span { transform: rotate(38deg); }
