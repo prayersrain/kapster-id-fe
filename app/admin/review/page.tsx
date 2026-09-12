@@ -1,0 +1,1 @@
+import type { Metadata } from 'next'; import { AdminReviewPage } from '../../../components/admin/AdminReviewPage'; export const metadata: Metadata={title:'Admin Review — Kapster.id',robots:{index:false,follow:false}}; export default function AdminReviewRoute(){return <AdminReviewPage/>;}
