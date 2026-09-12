@@ -1,0 +1,10 @@
+'use client';
+import { useState } from 'react';
+import styles from './FlowPage.module.css';
+
+const steps = ['Verifikasi akun Owner', 'Lengkapi profil bisnis', 'Buat outlet pertama', 'Tambah layanan & harga', 'Tambah kapster', 'Atur jadwal kapster', 'Undang kasir', 'Atur kebijakan booking', 'Review halaman booking', 'Kirim untuk approval'];
+export function OnboardingPage() {
+  const [done, setDone] = useState([true, true, true, true, false, false, false, false, false, false]);
+  const complete = done.filter(Boolean).length;
+  return <main className={styles.flowPage}><div className={styles.flowCard}><a className={styles.flowBrand} href="/">Kapster<span>.id</span></a><div className={styles.flowHeader}><span className={styles.eyebrow}>SETUP BISNIS · LANGKAH 2 DARI 2</span><h1>Siapkan barbershop Anda</h1><p>Lengkapi checklist ini kapan saja. Progress tersimpan dan Anda tetap bisa masuk dashboard.</p></div><div className={styles.progressLabel}><strong>{complete} dari {steps.length} langkah selesai</strong><span>{Math.round(complete / steps.length * 100)}%</span></div><div className={styles.progress}><i style={{ width: `${complete / steps.length * 100}%` }} /></div><div className={styles.stepList}>{steps.map((step, index) => <button type="button" className={`${styles.step} ${done[index] ? styles.stepDone : ''}`} key={step} onClick={() => setDone(current => current.map((value, item) => item === index ? !value : value))}><span className={styles.stepIcon}>{done[index] ? '✓' : index + 1}</span><span><strong>{step}</strong><small>{done[index] ? 'Selesai' : index === complete ? 'Siap dikerjakan' : 'Belum dimulai'}</small></span><b>{done[index] ? 'Selesai' : 'Mulai →'}</b></button>)}</div><div className={styles.flowActions}><a className={styles.secondary} href="/owner">Kembali ke Dashboard</a><a className={styles.primary} href={complete === steps.length ? '/approval' : '#'} onClick={(event) => { if (complete !== steps.length) event.preventDefault(); }}>{complete === steps.length ? 'Kirim untuk Approval →' : 'Selesaikan checklist untuk lanjut'}</a></div></div></main>;
+}
