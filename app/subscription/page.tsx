@@ -1,0 +1,1 @@
+import type { Metadata } from 'next'; import { SubscriptionPage } from '../../components/subscription/SubscriptionPage'; export const metadata: Metadata={title:'Subscription — Kapster.id',robots:{index:false,follow:false}}; export default function SubscriptionRoute(){return <SubscriptionPage/>;}
