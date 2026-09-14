@@ -1,4 +1,23 @@
-# Kapster.id Landing Page
+# Kapster.id — Landing dan Aplikasi Lokal
+
+Next.js melayani landing page. Aplikasi Owner, Kasir, Admin, dan booking publik menggunakan React + Vite dengan backend NestJS serta database SQLite lokal.
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+- Landing: http://127.0.0.1:3000
+- Aplikasi/login: http://127.0.0.1:5173/login
+- Booking publik: http://127.0.0.1:5173/booking
+- Akun uji: `npm.cmd run local:accounts`
+- Kotak email lokal: `npm.cmd run local:mail`
+
+**Panduan lengkap, batas implementasi, dan skenario uji:** [docs/LOCAL-APP.md](docs/LOCAL-APP.md).
+
+Payment gateway dan subscription berbayar belum diaktifkan. Dashboard memerlukan login dan otorisasi API. Data tersimpan di `.local/` (diabaikan Git). Versi ini khusus pengujian lokal dan belum siap deployment produksi.
+
+## Landing page
 
 Landing page responsif untuk Kapster.id, platform SaaS yang membantu operasional barbershop mengelola booking, jadwal, kasir, customer, outlet, dan laporan dalam satu sistem.
 
@@ -77,7 +96,7 @@ npm run typecheck
 npm run build
 ```
 
-`typecheck` memvalidasi TypeScript, sedangkan `build` memastikan project dapat dikompilasi sebagai production build Next.js.
+`typecheck` memvalidasi TypeScript landing, aplikasi Vite, dan API. `build` membangun ketiganya. Pengujian API tersedia melalui `npm run test`, dan pengujian alur browser melalui `npm run test:browser` (tutup server development terlebih dahulu).
 
 ## Catatan konten
 

@@ -3,6 +3,10 @@
 
 # Next.js
 /.next/
+**/dist/
+/.local/
+*.sqlite*
+/test-results/
 /out/
 
 # Build dan testing
