@@ -38,7 +38,7 @@ Login sesuai role. Tidak ada endpoint publik untuk membaca password akun contoh.
 Registrasi Owner membuat organisasi baru berstatus draft. Email verifikasi, reset password, dan undangan Kasir ditulis ke **kotak email filesystem**, bukan dikirim sungguhan:
 
 ```powershell
-
+npm.cmd run local:mail
 ```
 
 Salin tautan terbaru untuk email tujuan yang benar ke browser. Token sekali pakai, kedaluwarsa 30 menit. Mengirim ulang membatalkan token sejenis sebelumnya. Reset password mencabut session lama.
@@ -59,11 +59,13 @@ Untuk dua role sekaligus, gunakan browser atau profil terpisah karena satu brows
 ## Struktur dan batas implementasi
 
 - `app/`, komponen landing dan `public/assets/`: Next.js landing tetap di root agar migrasi tidak mengubah aset pemasaran.
-- `apps/web/`: React + Vite dan React Router; halaman operasional membaca API. Style menggunakan tema visual hitam/emas sebelumnya, dengan formulir/tabel yang benar-benar berfungsi.
+- `apps/web/`: React + Vite dan React Router; halaman operasional membaca API. Komponen presentasi memakai ulang CSS module dari implementasi awal di `main`: booking berbentuk layar ponsel, onboarding terpisah, serta dashboard Owner/Kasir/Admin dengan sidebar gelap dan aksen emas.
 - `apps/api/`: NestJS; auth, akses organisasi/outlet, katalog, jadwal, booking, kas, approval, dan audit.
 - `.local/kapster.sqlite`: database SQLite file; `.local/mail.jsonl`: email pengembangan. Keduanya diabaikan Git dan tidak dilayani aplikasi.
 - `docs/design/MockupUI/`: PRD dan referensi desain yang sebelumnya berada di `public`.
 - `prototypes/next-routes/` dan komponen dashboard lama: referensi implementasi awal, tidak dirutekan pada aplikasi aktif. Smoke test UI lama hanya berlaku untuk prototype sebelum migrasi.
+
+Tampilan memakai data API: angka, jumlah baris, status, dan keadaan kosong dapat berbeda dari contoh di `main`. Grafik menghitung data tersimpan; fitur eksternal yang belum terintegrasi tetap ditandai belum aktif. Halaman Owner memuat kalender mingguan, detail booking, pengelolaan outlet, layanan, tim, kas, dan laporan. Kasir mempertahankan tampilan hitam/emas di `main`, termasuk antrean, detail customer, shift, dan pengaturan. Panel detail tenant Admin tersedia dari menu Tenant Detail atau tautan Profil Lengkap.
 
 **Implementasi ini adalah alur operasional lokal, bukan implementasi produksi seluruh PRD.** Fitur yang sudah dihubungkan: auth, verifikasi/reset lokal, setup dan approval, publikasi outlet, CRUD layanan/kapster, jadwal/cuti, undangan dan penonaktifan Kasir, booking publik/kasir, check-in/layanan, reschedule/pembatalan/no-show, kas/shift, refund penuh manual, customer, laporan CSV dan audit.
 

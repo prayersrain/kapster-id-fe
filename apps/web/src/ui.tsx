@@ -146,7 +146,7 @@ export function Form({
             {error}
           </p>
         )}
-        <button className="primary" type="submit">
+        <button className="primary" type="submit" aria-label={busy ? 'Menyimpan…' : submit}>
           {busy ? 'Menyimpan…' : submit}
         </button>
       </fieldset>

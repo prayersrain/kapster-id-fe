@@ -5,6 +5,7 @@ import { AuthProvider, AuthPage, Protected, useAuth, homeFor } from './auth';
 import { Booking, BookingStatus } from './Booking';
 import { Workspace } from './Workspace';
 import './styles.css';
+import './restored.css';
 function Home() {
   const { user, loading } = useAuth();
   return loading ? <p>Memuat…</p> : <Navigate to={user ? homeFor(user) : '/booking'} replace />;

@@ -1,10 +1,22 @@
 import { ReactNode, useCallback, useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Logo } from '../../../components/ui/Logo';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, AppData, Entity, rupiah, today, labels } from './api';
 import { useAuth, homeFor } from './auth';
-import { Badge, Card, Empty, Table, Form, Modal, FieldSpec, exportCsv } from './ui';
+import { Badge, Card, Table, Form, Modal, FieldSpec, exportCsv } from './ui';
 import { Booking } from './Booking';
+import {
+  WorkspaceShell,
+  PageTitle,
+  OwnerOverview,
+  BookingList,
+  CalendarView,
+  SetupBanner,
+  SetupPage,
+} from './WorkspacePresentation';
+import { AdminPresentation } from './AdminPresentation';
+import { ManagementView } from './ManagementPresentation';
+import { CashierQueue, CashierShift } from './CashierPresentation';
+import { OutletsPresentation } from './OutletsPresentation';
 
 type Dialog = {
   title: string;
@@ -14,34 +26,6 @@ type Dialog = {
   map?: (values: Entity) => Entity;
   description?: string;
 };
-const ownerMenu = [
-  ['', 'Ringkasan', '◫'],
-  ['bookings', 'Booking', '▦'],
-  ['calendar', 'Kalender', '▦'],
-  ['transactions', 'Transaksi', '▤'],
-  ['reports', 'Laporan', '↗'],
-  ['outlets', 'Outlet', '⌂'],
-  ['barbers', 'Kapster & Jadwal', '✂'],
-  ['services', 'Layanan', '◇'],
-  ['customers', 'Customer', '♙'],
-  ['cashiers', 'Kasir & Shift', '▣'],
-  ['onboarding', 'Setup Bisnis', '✓'],
-  ['settings', 'Pengaturan', '⚙'],
-];
-const cashierMenu = [
-  ['', 'Ringkasan', '◫'],
-  ['bookings', 'Antrean & Booking', '▦'],
-  ['new', 'Booking Kasir', '＋'],
-  ['transactions', 'Transaksi', '▤'],
-  ['customers', 'Customer', '♙'],
-  ['shifts', 'Shift Kasir', '▣'],
-  ['settings', 'Akun', '⚙'],
-];
-const adminMenu = [
-  ['', 'Ringkasan', '◫'],
-  ['tenants', 'Bisnis & Approval', '⌂'],
-  ['audit', 'Audit & Keamanan', '▤'],
-];
 const fieldReason: FieldSpec = {
   key: 'reason',
   label: 'Alasan',
@@ -102,7 +86,6 @@ export function Workspace() {
   if (!user) return null;
   const base = homeFor(user),
     page = location.pathname.slice(base.length).replace(/^\//, '') || '';
-  const menu = user.role === 'admin' ? adminMenu : user.role === 'owner' ? ownerMenu : cashierMenu;
   const owner = user.role === 'owner';
   const action = (title: string, endpoint: string, fields: FieldSpec[] = [], extra: Partial<Dialog> = {}) =>
     setDialog({ title, endpoint, fields, ...extra });
@@ -238,44 +221,6 @@ export function Workspace() {
       </div>
     );
   }
-  function bookingTable(items: Entity[]) {
-    return (
-      <Table
-        headers={[
-          'Kode / customer',
-          'Jadwal',
-          'Layanan / kapster',
-          'Outlet',
-          'Status',
-          'Pembayaran',
-          'Tindakan',
-        ]}
-        rows={items.map((b) => [
-          <>
-            <strong>{b.name}</strong>
-            <small>
-              {bookingCode(b.id)} · {b.phone}
-            </small>
-          </>,
-          <>
-            {b.date}
-            <small>{b.time} WIB</small>
-          </>,
-          <>
-            {b.serviceName}
-            <small>{barberName(b.barberId)}</small>
-          </>,
-          outletName(b.outletId),
-          <Badge value={b.status} />,
-          <>
-            {rupiah(b.price)}
-            <small>{b.paid ? 'Tunai tercatat' : 'Belum dibayar'}</small>
-          </>,
-          bookingActions(b),
-        ])}
-      />
-    );
-  }
   function shiftsPanel() {
     return (
       <Card
@@ -404,69 +349,40 @@ export function Workspace() {
   function renderApp(): ReactNode {
     if (!data) return <p role="status">Memuat data operasional…</p>;
     switch (page) {
-      case '': {
-        const todays = filtered(data.bookings).filter((b) => b.date === today());
-        const revenue = filtered(data.payments)
-          .filter((p) => new Date(Date.parse(p.created) + 7 * 3600000).toISOString().slice(0, 10) === today())
-          .reduce((sum, p) => sum + p.amount, 0);
-        return (
-          <>
-            <div className="metrics">
-              {[
-                ['Booking hari ini', todays.length],
-                ['Selesai', todays.filter((b) => b.status === 'completed').length],
-                ['Penerimaan tunai hari ini', rupiah(revenue)],
-                ['Shift aktif', filtered(data.shifts).filter((s) => !s.closed).length],
-              ].map(([label, value]) => (
-                <div className="metric" key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                  <small>Dari data operasional tersimpan</small>
-                </div>
-              ))}
-            </div>
-            {owner && data.org.status !== 'approved' && setupPanel()}
-            <Card title="Jadwal hari ini" action={<Link to={`${base}/bookings`}>Lihat semua →</Link>}>
-              {bookingTable(todays)}
-            </Card>
-            {shiftsPanel()}
-          </>
+      case '':
+        return owner ? (
+          <OwnerOverview data={data} outletFilter={outletFilter} />
+        ) : (
+          <CashierQueue
+            data={data}
+            bookings={bookings.filter((b) => b.date === today())}
+            actions={bookingActions}
+            search={search}
+            setSearch={setSearch}
+          />
         );
-      }
       case 'bookings':
-      case 'calendar':
-        return (
-          <>
-            <div className="toolbar">
-              <input
-                aria-label="Cari booking"
-                placeholder="Cari nama, WhatsApp, atau kode…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <Link className="primary" to={`${base}/new`}>
-                ＋ Booking kasir
-              </Link>
-            </div>
-            <Card title={page === 'calendar' ? 'Kalender booking' : 'Antrean & booking'}>
-              {page === 'calendar' ? (
-                <>
-                  {[...new Set(bookings.map((b) => b.date))].sort().map((date) => (
-                    <section className="calendar-day" key={date}>
-                      <h3>{date}</h3>
-                      {bookingTable(
-                        bookings.filter((b) => b.date === date).sort((a, b) => a.starts - b.starts),
-                      )}
-                    </section>
-                  ))}
-                  {bookings.length === 0 && <Empty />}
-                </>
-              ) : (
-                bookingTable(bookings)
-              )}
-            </Card>
-          </>
+        return owner ? (
+          <BookingList
+            data={data}
+            bookings={bookings}
+            actions={bookingActions}
+            search={search}
+            setSearch={setSearch}
+            base={base}
+          />
+        ) : (
+          <CashierQueue
+            data={data}
+            bookings={bookings}
+            actions={bookingActions}
+            search={search}
+            setSearch={setSearch}
+            compact
+          />
         );
+      case 'calendar':
+        return <CalendarView data={data} bookings={bookings} actions={bookingActions} />;
       case 'new':
         return activeShift ? (
           <Booking
@@ -493,55 +409,32 @@ export function Workspace() {
         );
       case 'outlets':
         return (
-          <Card
-            title="Outlet bisnis"
-            action={
-              <button
-                className="primary"
-                onClick={() =>
-                  action('Tambah outlet', 'app/outlets', [
-                    { key: 'name', label: 'Nama outlet' },
-                    { key: 'address', label: 'Alamat' },
-                  ])
-                }
-              >
-                ＋ Tambah outlet
-              </button>
+          <OutletsPresentation
+            data={data}
+            add={() =>
+              action('Tambah outlet', 'app/outlets', [
+                { key: 'name', label: 'Nama outlet' },
+                { key: 'address', label: 'Alamat' },
+              ])
             }
-          >
-            <Table
-              headers={['Nama', 'Alamat', 'Booking publik', 'Tindakan']}
-              rows={data.outlets.map((o) => [
-                o.name,
-                o.address,
-                o.published ? 'Aktif' : 'Belum diterbitkan',
-                <div className="actions">
-                  <button
-                    onClick={() =>
-                      action(
-                        'Pengaturan outlet',
-                        `app/outlets/${o.id}`,
-                        [
-                          { key: 'name', label: 'Nama outlet', value: o.name },
-                          { key: 'address', label: 'Alamat', value: o.address },
-                          {
-                            key: 'published',
-                            label: 'Terbitkan booking publik',
-                            type: 'checkbox',
-                            value: !!o.published,
-                          },
-                        ],
-                        { method: 'PATCH' },
-                      )
-                    }
-                  >
-                    Edit
-                  </button>
-                  {!!o.published && <Link to="/booking">Buka booking →</Link>}
-                </div>,
-              ])}
-            />
-          </Card>
+            edit={(outlet) =>
+              action(
+                'Pengaturan outlet',
+                `app/outlets/${outlet.id}`,
+                [
+                  { key: 'name', label: 'Nama outlet', value: outlet.name },
+                  { key: 'address', label: 'Alamat', value: outlet.address },
+                  {
+                    key: 'published',
+                    label: 'Terbitkan booking publik',
+                    type: 'checkbox',
+                    value: !!outlet.published,
+                  },
+                ],
+                { method: 'PATCH' },
+              )
+            }
+          />
         );
       case 'services':
         return (
@@ -767,7 +660,29 @@ export function Workspace() {
           </>
         );
       case 'shifts':
-        return shiftsPanel();
+        return owner ? (
+          shiftsPanel()
+        ) : (
+          <CashierShift
+            data={data}
+            user={user!}
+            open={() =>
+              action('Buka shift kasir', 'app/shifts/open', [
+                outletField,
+                amount('opening', 'Modal kas awal'),
+              ])
+            }
+            close={(s) =>
+              action(
+                'Tutup shift',
+                `app/shifts/${s.id}/close`,
+                [amount('counted', 'Uang fisik terhitung', s.expected), { ...fieldReason, required: false }],
+                { description: 'Hitung uang fisik sebelum mengisi. Alasan wajib jika ada selisih.' },
+              )
+            }
+            history={shiftsPanel()}
+          />
+        );
       case 'customers': {
         const customers = [...new Set(data.bookings.map((b) => b.phone))]
           .map((phone) => {
@@ -991,220 +906,9 @@ export function Workspace() {
         );
     }
   }
-  function renderAdmin() {
-    if (!admin) return <p role="status">Memuat data platform…</p>;
-    return (
-      <>
-        {page === '' && (
-          <div className="metrics">
-            {[
-              ['Bisnis terdaftar', admin.orgs.length],
-              ['Menunggu review', admin.orgs.filter((o) => o.status === 'pending').length],
-              ['Bisnis disetujui', admin.orgs.filter((o) => o.status === 'approved').length],
-              ['Ditangguhkan', admin.orgs.filter((o) => o.status === 'suspended').length],
-            ].map(([k, v]) => (
-              <div className="metric" key={k}>
-                <span>{k}</span>
-                <strong>{v}</strong>
-              </div>
-            ))}
-          </div>
-        )}
-        {page !== 'audit' && (
-          <Card title="Bisnis & approval">
-            <Table
-              headers={['Bisnis', 'Outlet', 'Status', 'Catatan', 'Tindakan']}
-              rows={admin.orgs.map((o) => [
-                <>
-                  <strong>{o.name}</strong>
-                  <details>
-                    <summary>Detail setup</summary>
-                    {o.owners.map((v: Entity) => (
-                      <p key={v.email}>
-                        {v.name} · {v.email}
-                      </p>
-                    ))}
-                    {o.setupOutlets.map((v: Entity) => (
-                      <p key={v.id}>
-                        {v.name} · {v.address}
-                      </p>
-                    ))}
-                    {o.setupServices.map((v: Entity, i: number) => (
-                      <p key={i}>
-                        {v.name} · {rupiah(v.price)} · {v.duration} menit
-                      </p>
-                    ))}
-                    {o.setupBarbers.map((v: Entity, i: number) => (
-                      <p key={i}>
-                        {v.name} · {v.start}–{v.end}
-                      </p>
-                    ))}
-                  </details>
-                </>,
-                o.outlets,
-                <Badge value={o.status} />,
-                o.reason || '—',
-                <div className="actions">
-                  {['pending', 'suspended'].includes(o.status) && (
-                    <button
-                      onClick={() =>
-                        action('Setujui bisnis', `admin/orgs/${o.id}/status`, [fieldReason], {
-                          map: (v) => ({ ...v, status: 'approved' }),
-                        })
-                      }
-                    >
-                      Setujui
-                    </button>
-                  )}
-                  {o.status === 'pending' && (
-                    <button
-                      onClick={() =>
-                        action('Kembalikan untuk revisi', `admin/orgs/${o.id}/status`, [fieldReason], {
-                          map: (v) => ({ ...v, status: 'rejected' }),
-                        })
-                      }
-                    >
-                      Minta revisi
-                    </button>
-                  )}
-                  {o.status === 'approved' && (
-                    <button
-                      onClick={() =>
-                        action('Tangguhkan bisnis', `admin/orgs/${o.id}/status`, [fieldReason], {
-                          map: (v) => ({ ...v, status: 'suspended' }),
-                          description: 'Booking publik dihentikan. Data transaksi tetap tersimpan.',
-                        })
-                      }
-                    >
-                      Tangguhkan
-                    </button>
-                  )}
-                </div>,
-              ])}
-            />
-          </Card>
-        )}
-        {page === 'audit' && (
-          <Card title="Audit platform">
-            <Table
-              headers={['Waktu', 'Aktor', 'Tindakan', 'Alasan']}
-              rows={admin.audit.map((a) => [
-                new Date(a.created).toLocaleString('id-ID'),
-                a.actorName || a.actor,
-                a.action,
-                a.reason || '—',
-              ])}
-            />
-          </Card>
-        )}
-      </>
-    );
-  }
-  return (
-    <div className="workspace">
-      {menuOpen && <button className="backdrop" aria-label="Tutup navigasi" onClick={() => setMenu(false)} />}
-      <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
-        <Link to={base} className="sidebar-brand">
-          <Logo />
-        </Link>
-        <div className="business">
-          <span className="avatar">{user.role === 'admin' ? 'K' : (data?.org.name ?? 'K').slice(0, 1)}</span>
-          <div>
-            <strong>{user.role === 'admin' ? 'Admin Platform' : (data?.org.name ?? 'Memuat bisnis…')}</strong>
-            <small>{labels[user.role]}</small>
-          </div>
-        </div>
-        <small className="nav-label">RUANG KERJA</small>
-        <nav>
-          {menu.map(([route, label, icon]) => (
-            <NavLink end to={`${base}${route ? '/' + route : ''}`} key={route}>
-              <span>{icon}</span>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <Link to="/booking">↗ Booking publik</Link>
-          <a href="http://127.0.0.1:3000">↗ Landing page</a>
-          <small>Mode lokal · Pembayaran tunai</small>
-        </div>
-      </aside>
-      <div className="workspace-main">
-        <header className="topbar">
-          <button className="menu-toggle" aria-label="Buka navigasi" onClick={() => setMenu(!menuOpen)}>
-            ☰
-          </button>
-          <span className="breadcrumb">
-            {labels[user.role]} <span>/</span> {menu.find((m) => m[0] === page)?.[1] ?? 'Operasional'}
-          </span>
-          <div className="account">
-            <span className="avatar">{user.name.slice(0, 2).toUpperCase()}</span>
-            <strong>{user.name}</strong>
-            <button
-              onClick={async () => {
-                try {
-                  await api('auth/logout', {});
-                  setUser(null);
-                  navigate('/login');
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              Keluar
-            </button>
-          </div>
-        </header>
-        <main className="workspace-content">
-          <div className="page-heading">
-            <div>
-              <span className="eyebrow">
-                {user.role === 'admin' ? 'PLATFORM OPERATIONS' : 'BARBERSHOP WORKSPACE'}
-              </span>
-              <h1>{menu.find((m) => m[0] === page)?.[1] ?? 'Operasional'}</h1>
-              <p className="muted">
-                {new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })} · Data tersimpan lokal
-              </p>
-            </div>
-            <div className="actions">
-              {owner && data && (
-                <select
-                  aria-label="Filter outlet"
-                  value={outletFilter}
-                  onChange={(e) => setOutletFilter(e.target.value)}
-                >
-                  <option value="">Semua outlet</option>
-                  {data.outlets.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button disabled={reloading} onClick={() => void reload()}>
-                {reloading ? 'Memuat…' : '↻ Muat ulang'}
-              </button>
-            </div>
-          </div>
-          {error && (
-            <div className="error" role="alert">
-              {error}
-            </div>
-          )}
-          {notice && (
-            <div className="success" role="status">
-              {notice}
-            </div>
-          )}
-          {user.role !== 'admin' && data?.org.status !== 'approved' && (
-            <p className="notice">
-              Bisnis belum aktif untuk operasional. Lengkapi setup dan review Admin. Data yang sudah diisi
-              tetap tersimpan.
-            </p>
-          )}
-          {user.role === 'admin' ? renderAdmin() : renderApp()}
-        </main>
-      </div>
+  const modal = (
+    <>
+      {' '}
       {dialog && (
         <Modal title={dialog.title} close={() => setDialog(null)}>
           {dialog.description && <p className="muted">{dialog.description}</p>}
@@ -1228,6 +932,116 @@ export function Workspace() {
           />
         </Modal>
       )}
-    </div>
+    </>
+  );
+  if (owner && data && ['onboarding', 'approval'].includes(page))
+    return (
+      <>
+        <SetupPage data={data} approval={page === 'approval'}>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="success">
+              {notice}
+            </p>
+          )}
+          {setupPanel()}
+        </SetupPage>
+        {modal}
+      </>
+    );
+  return (
+    <>
+      <WorkspaceShell
+        user={user}
+        data={data}
+        page={page}
+        menuOpen={menuOpen}
+        setMenu={setMenu}
+        search={search}
+        setSearch={setSearch}
+        logout={async () => {
+          try {
+            await api('auth/logout', {});
+            setUser(null);
+            navigate('/login');
+          } catch (e) {
+            setError((e as Error).message);
+          }
+        }}
+      >
+        {owner && data && !page && <SetupBanner data={data} />}
+        <PageTitle user={user} page={page} orgName={data?.org.name}>
+          {owner && data && (
+            <select
+              aria-label="Filter outlet"
+              value={outletFilter}
+              onChange={(e) => setOutletFilter(e.target.value)}
+            >
+              <option value="">Semua outlet</option>
+              {data.outlets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button disabled={reloading} onClick={() => void reload()} aria-label="Muat ulang data">
+            {reloading ? 'Memuat…' : '↻ Muat ulang'}
+          </button>
+        </PageTitle>
+        {error && (
+          <div className="error" role="alert">
+            {error}
+          </div>
+        )}
+        {notice && (
+          <div className="success" role="status">
+            {notice}
+          </div>
+        )}
+        {user.role === 'admin' ? (
+          admin ? (
+            <AdminPresentation
+              data={admin}
+              page={page}
+              search={search}
+              onDecision={(org, status) =>
+                action(
+                  status === 'approved'
+                    ? 'Setujui bisnis'
+                    : status === 'rejected'
+                      ? 'Kembalikan untuk revisi'
+                      : 'Tangguhkan bisnis',
+                  `admin/orgs/${org.id}/status`,
+                  [fieldReason],
+                  {
+                    map: (v) => ({ ...v, status }),
+                    description:
+                      status === 'suspended'
+                        ? 'Booking publik dihentikan. Data transaksi tetap tersimpan.'
+                        : 'Keputusan dan alasan dicatat dalam audit.',
+                  },
+                )
+              }
+            />
+          ) : (
+            <p role="status">Memuat data platform…</p>
+          )
+        ) : data &&
+          page &&
+          !['bookings', 'calendar', 'outlets', ...(!owner ? ['shifts'] : [])].includes(page) ? (
+          <ManagementView key={page} data={data} page={page} user={user} outletFilter={outletFilter}>
+            {renderApp()}
+          </ManagementView>
+        ) : (
+          renderApp()
+        )}
+      </WorkspaceShell>
+      {modal}
+    </>
   );
 }

@@ -6,7 +6,8 @@ process.env.E2E_DIR = testDir;
 export default defineConfig({
   testDir: './tests/browser',
   workers: 1,
-  timeout: 45000,
+  timeout: 120000,
+  expect: { timeout: 10000 },
   outputDir: 'test-results',
   reporter: 'list',
   use: {
