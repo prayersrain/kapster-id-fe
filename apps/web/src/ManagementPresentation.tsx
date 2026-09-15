@@ -148,7 +148,7 @@ export function ManagementView({
               </div>
               <div className={o.planFeatures}>
                 {['Booking publik', 'Jadwal kapster', 'Transaksi tunai', 'Laporan kas'].map((v) => (
-                  <span key={v}>✓ {v}</span>
+                  <span key={v}>• {v}</span>
                 ))}
               </div>
             </div>

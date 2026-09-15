@@ -511,7 +511,7 @@ export function ToastView({ toast, onClose }: { toast: Toast | null; onClose: ()
   return (
     <div className={`toast toast-${toast.tone}`} role={toast.tone === 'error' ? 'alert' : 'status'}>
       <span className="toast-icon">
-        <Glyph name={toast.tone === 'error' ? 'alert' : 'check'} size={18} />
+        <Glyph name={toast.tone === 'error' ? 'alert' : 'bell'} size={18} />
       </span>
       <div>
         <strong>{toast.title}</strong>

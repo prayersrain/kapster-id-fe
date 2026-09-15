@@ -1,0 +1,515 @@
+/* Approved card, chart and control treatment. Scoped to the operational app. */
+.revenue-chart-area {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 38px;
+  gap: 8px;
+  margin-top: 12px;
+}
+.revenue-axis {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 33px 0 15px;
+  height: 200px;
+  color: #747e6a;
+  font-size: 10px;
+}
+.revenue-axis small {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+}
+.revenue-count-axis {
+  text-align: right;
+}
+.revenue-count-axis small {
+  right: 0;
+}
+.revenue-plot {
+  min-width: 0;
+}
+.revenue-plot svg {
+  width: 100%;
+  height: 200px;
+  overflow: visible;
+  display: block;
+}
+.revenue-grid {
+  stroke: #eeeee8;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.revenue-bar {
+  fill: #e5d4b4;
+}
+.revenue-line {
+  fill: none;
+  stroke: #a87935;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.revenue-point {
+  stroke: #a87935;
+  stroke-width: 6;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.revenue-dates {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+  color: #737c6a;
+  font-size: 10px;
+  padding: 1px 0 4px;
+}
+.restored-workspace {
+  --summary-gold: #ab7d3c;
+  --summary-line: #e9e7e1;
+}
+.restored-workspace .summary-card {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 140px;
+  padding: 17px;
+  border: 1px solid var(--summary-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 12px #24282003;
+  gap: 0;
+}
+.restored-workspace
+  :is(.live-metrics, [class*='metricsGrid'], [class*='kpiSix'])
+  > .summary-card:first-child {
+  background: linear-gradient(130deg, #fffcf7, #f5ead8);
+  border-color: #e9dcc6;
+}
+.restored-workspace .summary-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 31px;
+}
+.restored-workspace .summary-label {
+  min-width: 0;
+  color: #666c62;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.restored-workspace .summary-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 31px;
+  height: 31px;
+  border: 1px solid #e8e1d6;
+  border-radius: 9px;
+  background: #fbf9f5;
+  color: #93703c;
+}
+.restored-workspace .summary-value {
+  display: block;
+  color: #22271f;
+  font-size: clamp(18px, 11cqi, 29px);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  margin: 12px 0 14px;
+}
+.restored-workspace .summary-value-long {
+  font-size: clamp(14px, 8.4cqi, 26px);
+}
+.restored-workspace .summary-note {
+  margin-top: auto;
+  border-top: 1px solid #2023200c;
+  padding-top: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.restored-workspace .summary-note small {
+  color: #787e70;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0;
+}
+.summary-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: #ab7d3c;
+}
+.restored-workspace :is(.card, section[class*='_panel_']) {
+  border-radius: 14px;
+}
+.restored-workspace .distribution {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 12px 16px 16px;
+  min-width: 0;
+}
+.distribution-ring {
+  position: relative;
+  width: 136px;
+  height: 136px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.distribution-ring::before {
+  content: '';
+  position: absolute;
+  inset: 17px;
+  border-radius: 50%;
+  background: #fff;
+}
+.distribution-ring > div {
+  position: relative;
+  display: grid;
+  text-align: center;
+  gap: 2px;
+  padding: 0 18px;
+}
+.restored-workspace .distribution-ring strong {
+  font-size: 29px;
+  color: #252a23;
+  line-height: 1.2;
+}
+.distribution-ring span {
+  color: #73796c;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.distribution-legend {
+  width: 100%;
+  max-width: 270px;
+  min-width: 0;
+}
+.distribution-legend > span {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #eeeee8;
+  padding: 9px 0;
+  color: #535c4b;
+  font-size: 11px;
+}
+.distribution-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.distribution-legend b {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.distribution-legend small {
+  color: #7e8575;
+  font-size: 10px;
+  font-weight: 400;
+}
+.restored-workspace .card:has(> .distribution) {
+  min-height: 0;
+  align-self: start;
+}
+.restored-workspace :is([class*='cashierCharts'], [class*='overviewBottom']) {
+  align-items: start;
+}
+.restored-workspace [class*='shiftMetrics'] .summary-card {
+  display: flex;
+  min-height: 135px;
+  padding: 14px;
+}
+.restored-workspace [class*='shiftMetrics'] .summary-card strong {
+  font-size: clamp(16px, 11cqi, 26px);
+}
+.restored-workspace [class*='shiftMetrics'] .summary-card .summary-label {
+  font-size: 11px;
+}
+.restored-workspace [class*='kpiSix'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Compact secondary actions; selected and destructive controls retain their own state styling. */
+.restored-workspace
+  :is(
+    .workspace-refresh,
+    .workspace-outlet-filter,
+    .calendar-date-actions input,
+    .calendar-date-actions button,
+    .calendar-week-switch
+  ) {
+  min-height: 40px;
+  border: 1px solid #e1e2db;
+  border-radius: 10px;
+  background: #fff;
+  color: #414a39;
+  box-shadow: 0 1px 2px #24282005;
+  font-size: 12px;
+}
+.restored-workspace .workspace-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 13px;
+}
+.restored-workspace .workspace-outlet-filter {
+  padding: 0 12px;
+  max-width: 240px;
+}
+.restored-workspace :is(.workspace-refresh, .calendar-nav button):hover:not(:disabled) {
+  background: #f7f3eb;
+  border-color: #c5ad89;
+  color: #825e2c;
+}
+.restored-workspace :is(.workspace-refresh, .calendar-nav button):active:not(:disabled) {
+  transform: translateY(1px);
+}
+.restored-workspace .calendar-toolbar {
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.restored-workspace .calendar-nav {
+  gap: 0;
+}
+.restored-workspace .calendar-week-switch {
+  display: inline-flex;
+  padding: 3px;
+  flex: 0 1 auto;
+}
+.restored-workspace .calendar-week-switch button {
+  min-height: 34px;
+  width: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: none;
+}
+.calendar-week-switch .previous-chevron {
+  display: flex;
+  transform: rotate(180deg);
+}
+.restored-workspace .calendar-week-switch strong {
+  min-width: 136px;
+  padding: 0 12px;
+  text-align: center;
+  color: #414a39;
+  font-size: 12px;
+}
+.restored-workspace .calendar-date-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.restored-workspace .calendar-date-actions input {
+  width: 152px;
+  padding: 0 12px;
+}
+.restored-workspace .calendar-date-actions button {
+  padding: 0 14px;
+}
+.restored-workspace .calendar-nav button:disabled {
+  opacity: 0.5;
+  cursor: default;
+  color: #74796c;
+}
+.restored-workspace
+  :is(.workspace-refresh, .workspace-outlet-filter, .calendar-nav button, .calendar-nav input):focus-visible,
+.booking-dates button:focus-visible {
+  outline: 2px solid #a87935;
+  outline-offset: 3px;
+}
+.restored-workspace :is(.workspace-refresh, .calendar-nav button),
+.booking-dates button {
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.restored-booking .selection-marker {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  border: 1.5px solid #cfc7b9;
+  flex: 0 0 21px;
+  background: #fff;
+}
+.restored-booking [aria-pressed='true'] .selection-marker {
+  border-color: #a67c40;
+}
+.restored-booking [aria-pressed='true'] .selection-marker::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #a67c40;
+}
+.service-choice-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.restored-booking [class*='factList'] > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.restored-booking [class*='successIcon'] {
+  display: grid;
+  place-items: center;
+}
+.booking-dates {
+  margin: 22px 0 16px;
+}
+.booking-date-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.booking-date-nav > strong {
+  font-size: 13px;
+  color: #433c30;
+}
+.date-paging {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.restored-booking .date-paging button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid #e7dfd3;
+  border-radius: 9px;
+  background: #fff;
+  color: #94713f;
+}
+.date-paging button:first-child svg {
+  transform: rotate(180deg);
+}
+.booking-dates button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.booking-date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.restored-booking .booking-date-grid button {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 10px 0;
+  min-width: 0;
+  border: 1px solid #e6dfd4;
+  border-radius: 11px;
+  background: #fff;
+  color: #706859;
+  box-shadow: none;
+}
+.booking-date-grid small {
+  font-size: 10px;
+}
+.booking-date-grid strong {
+  font-size: 17px;
+  line-height: 1.3;
+}
+.restored-booking .booking-date-grid button[aria-pressed='true'] {
+  background: #f8f0e2;
+  border-color: #ad8144;
+  color: #90662f;
+  box-shadow: 0 2px 5px #ab804814;
+}
+.booking-date-summary {
+  color: #74654e;
+  font-size: 12px;
+  margin: 15px 0 0;
+}
+
+@media (max-width: 1200px) {
+  .restored-workspace .summary-card {
+    padding: 14px;
+  }
+  .restored-workspace .summary-label {
+    font-size: 11px;
+  }
+  .restored-workspace .summary-card-head {
+    gap: 6px;
+  }
+}
+@media (max-width: 900px) {
+  .restored-workspace :is(.live-metrics, [class*='metricsGrid'], [class*='kpiSix']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .restored-workspace .calendar-toolbar {
+    align-items: stretch;
+  }
+  .restored-workspace .calendar-week-switch {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .restored-workspace .calendar-date-actions {
+    width: 100%;
+  }
+  .restored-workspace .calendar-date-actions input {
+    flex: 1;
+    min-width: 0;
+  }
+  .restored-workspace .summary-icon {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+}
+@media (pointer: coarse) {
+  .restored-workspace
+    :is(
+      .workspace-refresh,
+      .workspace-outlet-filter,
+      .calendar-date-actions button,
+      .calendar-date-actions input
+    ) {
+    min-height: 44px;
+  }
+  .restored-workspace .calendar-week-switch button {
+    min-height: 44px;
+    width: 44px;
+  }
+  .restored-booking .date-paging button {
+    width: 44px;
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .restored-workspace :is(.workspace-refresh, .calendar-nav button),
+  .booking-dates button {
+    transition: none;
+  }
+}

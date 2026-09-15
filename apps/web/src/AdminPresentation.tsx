@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Entity, today } from './api';
 import { Badge, Card, Empty, Table, exportCsv } from './ui';
-import { Activity, Distribution, Person, Stats } from './WorkspacePresentation';
+import { Activity, Distribution, Person, Stats, Metric } from './WorkspacePresentation';
 import { Glyph } from './Glyph';
 import a from '../../../components/admin/AdminDashboard.module.css';
 
@@ -125,18 +125,13 @@ export function AdminPresentation({
   const kpis = (
     <div className={a.kpiSix}>
       {totals.map(([label, value], i) => (
-        <article className={a.kpi} key={label}>
-          <span
-            className={`${a.kpiIcon} ${[a.toneGold, a.toneGreen, a.toneBlue, a.toneGold, a.toneRed, a.toneRed][i]}`}
-          >
-            <Glyph name={i === 0 ? 'store' : i === 1 ? 'check' : i === 2 ? 'clock' : 'users'} />
-          </span>
-          <div>
-            <span>{label}</span>
-            <strong>{value}</strong>
-            <small>Tenant terdaftar</small>
-          </div>
-        </article>
+        <Metric
+          key={label}
+          label={String(label)}
+          value={value}
+          icon={i === 0 ? 'store' : i === 1 ? 'briefcase' : i === 2 ? 'clock' : 'users'}
+          note="Tenant terdaftar"
+        />
       ))}
     </div>
   );
@@ -231,13 +226,13 @@ export function AdminPresentation({
           <Card title="Aksi Cepat">
             <div className={a.quickActions}>
               {[
-                ['Review Onboarding', 'Tinjau kelengkapan tenant baru', 'onboarding', 'check'],
+                ['Review Onboarding', 'Tinjau kelengkapan tenant baru', 'onboarding', 'briefcase'],
                 ['Kelola Tenant', 'Periksa bisnis dan status operasional', 'tenants', 'store'],
                 ['Audit & Security', 'Tinjau perubahan dan akses', 'audit', 'lock'],
               ].map(([title, description, route, icon]) => (
                 <Link className="admin-quick-action" to={`/admin/${route}`} key={route}>
                   <span>
-                    <Glyph name={icon as 'check'} />
+                    <Glyph name={icon as 'briefcase'} />
                   </span>
                   <span>
                     <strong>{title}</strong>

@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppData, dayLabel, Entity, User, rupiah, shortDate, today } from './api';
 import { Badge, Empty, Table } from './ui';
-import { Person } from './WorkspacePresentation';
+import { Person, Metric } from './WorkspacePresentation';
 import { Glyph } from './Glyph';
 import c from '../../../components/cashier/CashierDashboard.module.css';
 
@@ -292,16 +292,13 @@ export function CashierQueue({
             ['Selesai Hari Ini', todays.filter((v) => v.status === 'completed').length, 'check', 'Green'],
             ['Pendapatan Hari Ini', rupiah(cash), 'wallet', 'Gold'],
           ].map(([label, value, icon, tone]) => (
-            <article className={c.metricCard} key={label}>
-              <span className={`${c.metricIcon} ${c['metric' + tone]}`}>
-                <Glyph name={icon as 'users'} />
-              </span>
-              <div>
-                <small>{label}</small>
-                <strong>{value}</strong>
-                <em>{icon === 'wallet' ? 'Penerimaan tunai' : 'customer'}</em>
-              </div>
-            </article>
+            <Metric
+              key={label}
+              label={String(label)}
+              value={value}
+              icon={icon === 'check' ? 'receipt' : (icon as 'users')}
+              note={icon === 'wallet' ? 'Penerimaan tunai' : 'Customer hari ini'}
+            />
           ))}
         </div>
       )}

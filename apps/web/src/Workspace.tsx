@@ -1,3 +1,4 @@
+import { Glyph } from './Glyph';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, AppData, dayLabel, Entity, rupiah, shortDate, today, labels } from './api';
@@ -435,7 +436,7 @@ export function Workspace() {
         <div className="checklist">
           {checks.map(([label, ok, route]) => (
             <Link key={String(label)} to={`${base}/${route}`}>
-              <span>{ok ? '✓' : '○'}</span>
+              <span>{ok ? '●' : '○'}</span>
               <strong>{String(label)}</strong>
               <small>{ok ? 'Tersimpan' : 'Lengkapi →'}</small>
             </Link>
@@ -1291,6 +1292,7 @@ export function Workspace() {
         <PageTitle user={user} page={page} orgName={data?.org.name}>
           {owner && data && (
             <select
+              className="workspace-outlet-filter"
               aria-label="Filter outlet"
               value={outletFilter}
               onChange={(e) => setOutletFilter(e.target.value)}
@@ -1303,8 +1305,13 @@ export function Workspace() {
               ))}
             </select>
           )}
-          <button disabled={reloading} onClick={() => void reload()} aria-label="Muat ulang data">
-            <span aria-hidden="true">↻</span> {reloading ? 'Memuat…' : 'Muat ulang'}
+          <button
+            className="workspace-refresh"
+            disabled={reloading}
+            onClick={() => void reload()}
+            aria-label="Muat ulang data"
+          >
+            <Glyph name="refresh" size={16} /> {reloading ? 'Memuat…' : 'Muat ulang'}
           </button>
         </PageTitle>
         {error && (

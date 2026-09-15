@@ -74,6 +74,17 @@ test('all restored screens render on desktop and phone without page overflow', a
             expect(railRight).toBeLessThanOrEqual(contentLeft + 1);
           }
         }
+        for (const card of await page.locator('.summary-card').all()) {
+          expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+        }
+        for (const chart of await page.locator('.distribution').all()) {
+          const [ring, legend] = await Promise.all([
+            chart.locator('.distribution-ring').boundingBox(),
+            chart.locator('.distribution-legend').boundingBox(),
+          ]);
+          expect(legend!.y).toBeGreaterThanOrEqual(ring!.y + ring!.height);
+          expect(legend!.y - ring!.y - ring!.height).toBeLessThanOrEqual(20);
+        }
         await page.screenshot({
           path: `test-results/visual-${role}-${route || 'dashboard'}-${size.width}.png`,
           animations: 'disabled',
