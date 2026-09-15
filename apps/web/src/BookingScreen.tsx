@@ -1,19 +1,30 @@
-import { ReactNode, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { Catalog, Entity, rupiah, today } from './api';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { bookingLink, Catalog, Entity, rupiah, shortDate, today } from './api';
+import { parseBookingLink } from './links';
 import { Badge, Empty, Form } from './ui';
 import { Logo } from '../../../components/ui/Logo';
 import { Glyph } from './Glyph';
 import s from '../../../components/booking/BookingExperience.module.css';
 
+const initials = (name = '') =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase() || 'K.';
 export function BookingFrame({
   children,
   internal = false,
   step,
+  home = '/booking',
 }: {
   children: ReactNode;
   internal?: boolean;
   step?: number;
+  home?: string;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const Stage = internal ? 'div' : 'main';
@@ -27,9 +38,13 @@ export function BookingFrame({
       <section className={s.phoneShell}>
         <div className={s.viewport} ref={viewport}>
           <nav className={s.topbar}>
-            <Link to="/booking">
+            {internal ? (
               <Logo compact />
-            </Link>
+            ) : (
+              <Link to={home} aria-label="Kembali ke halaman barbershop">
+                <Logo compact />
+              </Link>
+            )}
             <span className={s.secureBadge}>
               <Glyph name="lock" size={12} /> {internal ? 'Booking kasir' : 'Booking resmi'}
             </span>
@@ -43,6 +58,7 @@ export function BookingFrame({
 type Props = {
   catalog: Catalog | null;
   step: number;
+  firstStep: number;
   error: string;
   outletId: string;
   serviceId: string;
@@ -68,6 +84,7 @@ type Props = {
 };
 export function BookingScreen(p: Props) {
   const outlet = p.catalog?.outlets.find((o) => o.id === p.outletId);
+  const shopName = p.catalog?.org?.name ?? outlet?.name ?? '';
   const service = p.catalog?.services.find((o) => o.id === p.serviceId);
   const barber = p.catalog?.barbers.find((o) => o.id === p.barberId);
   const names = [
@@ -114,12 +131,18 @@ export function BookingScreen(p: Props) {
     (_, i) => new Date(`${today()}T12:00:00+07:00`).getTime() + i * 86400000,
   ).map((t) => new Date(t + 7 * 3600000).toISOString().slice(0, 10));
   return (
-    <BookingFrame internal={p.internal} step={p.step}>
+    <BookingFrame
+      internal={p.internal}
+      step={p.step}
+      home={p.catalog?.org ? bookingLink(p.catalog.org.slug) : '/booking'}
+    >
       {p.result ? (
         <div className={s.successContent}>
           <div className={s.successIcon}>✓</div>
           <h1>Booking tersimpan</h1>
-          <p>Booking sudah masuk ke antrean outlet.</p>
+          <p>
+            Booking {p.customer.name} · {shortDate(p.date)} {p.time} WIB sudah masuk ke antrean outlet.
+          </p>
           <Link className={s.primaryButton} to={`/booking/status/${p.result.token}`}>
             Lihat detail booking
           </Link>
@@ -132,14 +155,16 @@ export function BookingScreen(p: Props) {
           {p.step > 0 && (
             <header className={s.stepHeader}>
               <div className="booking-step-title">
-                <button
-                  className={s.backButton}
-                  aria-label="Kembali"
-                  disabled={p.busy}
-                  onClick={() => p.onStep(p.step - 1)}
-                >
-                  ←
-                </button>
+                {p.step > p.firstStep && (
+                  <button
+                    className={s.backButton}
+                    aria-label="Kembali ke langkah sebelumnya"
+                    disabled={p.busy}
+                    onClick={() => p.onStep(p.step - 1)}
+                  >
+                    ←
+                  </button>
+                )}
                 <strong>{names[p.step]}</strong>
                 <span>{p.step} / 5</span>
               </div>
@@ -157,8 +182,12 @@ export function BookingScreen(p: Props) {
                   <span />
                   BOOKING RESMI BARBERSHOP
                 </div>
-                <h1>{outlet?.name || 'Your next good haircut.'}</h1>
-                <p>Potongan terbaik, tanpa menunggu lama. Pilih outlet dan atur jadwal Anda.</p>
+                <h1>{shopName || 'Memuat barbershop…'}</h1>
+                <p>
+                  {(p.catalog?.outlets.length ?? 0) > 1
+                    ? 'Pilih outlet terdekat, lalu atur layanan, kapster, dan jadwal Anda.'
+                    : 'Pilih layanan, kapster, dan jadwal Anda. Tanpa akun, bayar di outlet.'}
+                </p>
               </div>
             </div>
           )}
@@ -167,10 +196,14 @@ export function BookingScreen(p: Props) {
               <>
                 <article className={s.shopCard}>
                   <div className={s.shopIdentity}>
-                    <span className={s.shopLogo}>K.</span>
+                    <span className={s.shopLogo}>{initials(shopName)}</span>
                     <span>
-                      <strong>{outlet?.name || 'Temukan barbershop Anda'}</strong>
-                      <small>{outlet?.address || 'Booking mudah, langsung dari ponsel.'}</small>
+                      <strong>{shopName || 'Memuat…'}</strong>
+                      <small>
+                        {(p.catalog?.outlets.length ?? 0) > 1
+                          ? `${p.catalog?.outlets.length} outlet menerima booking online`
+                          : outlet?.address}
+                      </small>
                     </span>
                   </div>
                   <div className={s.factList}>
@@ -190,7 +223,7 @@ export function BookingScreen(p: Props) {
             ) : (
               <>
                 <div className={s.outletMini}>
-                  <span className={s.shopLogo}>K.</span>
+                  <span className={s.shopLogo}>{initials(shopName)}</span>
                   <span>
                     <strong>{outlet?.name}</strong>
                     <small>{outlet?.address}</small>
@@ -358,7 +391,7 @@ export function BookingScreen(p: Props) {
                           ['Layanan', service?.name],
                           ['Durasi', `${service?.duration} menit`],
                           ['Kapster', barber?.name],
-                          ['Jadwal', `${p.date} · ${p.time} WIB`],
+                          ['Jadwal', `${shortDate(p.date)} · ${p.time} WIB`],
                           ['Customer', p.customer.name],
                           ['WhatsApp', p.customer.phone],
                         ].map(([k, v]) => (
@@ -415,7 +448,7 @@ export function BookingScreen(p: Props) {
 }
 export function BookingTicket({ data, error }: { data: Entity | null; error: string }) {
   return (
-    <BookingFrame>
+    <BookingFrame home={data?.orgSlug ? bookingLink(data.orgSlug) : '/booking'}>
       <div className={s.successScreen}>
         <div className={s.successGlow} />
         <div className={s.successContent}>
@@ -433,7 +466,7 @@ export function BookingTicket({ data, error }: { data: Entity | null; error: str
               <p>Simpan tautan pribadi ini untuk melihat status booking Anda.</p>
               <article className={s.successCard}>
                 <div className={s.successShop}>
-                  <span className={s.shopLogo}>K.</span>
+                  <span className={s.shopLogo}>{initials(data.orgName)}</span>
                   <span>
                     <strong>{data.outletName}</strong>
                     <small>{data.address}</small>
@@ -449,7 +482,7 @@ export function BookingTicket({ data, error }: { data: Entity | null; error: str
                     ['Customer', data.name],
                     ['Layanan', data.serviceName],
                     ['Kapster', data.barberName],
-                    ['Jadwal', `${data.date} · ${data.time} WIB`],
+                    ['Jadwal', `${shortDate(data.date)} · ${data.time} WIB`],
                     ['Total', rupiah(data.price)],
                   ].map(([k, v]) => (
                     <div key={k}>
@@ -478,12 +511,88 @@ export function BookingTicket({ data, error }: { data: Entity | null; error: str
               <button className={s.primaryButton} onClick={() => window.print()}>
                 Cetak / simpan PDF
               </button>
-              <Link className={s.secondaryButton} to="/booking">
-                Booking lainnya
-              </Link>
+              {data.orgSlug && (
+                <Link className={s.secondaryButton} to={bookingLink(data.orgSlug)}>
+                  Booking lagi di {data.orgName}
+                </Link>
+              )}
               <p className={s.policyNote}>Hubungi outlet untuk perubahan atau pembatalan.</p>
             </>
           )}
+        </div>
+      </div>
+    </BookingFrame>
+  );
+}
+
+export function BookingMissing({
+  message,
+  shop,
+}: {
+  message: string;
+  shop?: { name: string; href: string };
+}) {
+  return (
+    <BookingFrame home={shop?.href}>
+      <div className={s.successScreen}>
+        <div className={s.successContent}>
+          <div className={s.successIcon} aria-hidden="true">
+            ?
+          </div>
+          <h1>Halaman booking tidak tersedia</h1>
+          <p>{message}</p>
+          <p className={s.policyNote}>
+            Pastikan link sesuai dengan yang dibagikan barbershop, misalnya lewat Instagram atau WhatsApp.
+          </p>
+          {shop ? (
+            <Link className={s.primaryButton} to={shop.href}>
+              Lihat outlet {shop.name}
+            </Link>
+          ) : (
+            <Link className={s.secondaryButton} to="/booking">
+              Masukkan link lain
+            </Link>
+          )}
+        </div>
+      </div>
+    </BookingFrame>
+  );
+}
+export function BookingDirectory() {
+  const navigate = useNavigate();
+  const [value, setValue] = useState('');
+  const target = parseBookingLink(value);
+  return (
+    <BookingFrame>
+      <div className={s.successScreen}>
+        <div className={s.successContent}>
+          <span className={s.bookingCode}>BOOKING KAPSTER.ID</span>
+          <h1>Buka link booking barbershop Anda</h1>
+          <p>
+            Setiap barbershop punya link booking sendiri, contohnya <b>/booking/garasi-barber</b> atau link
+            outlet seperti <b>/booking/garasi-barber/tebet</b>. Link biasanya dibagikan lewat Instagram,
+            WhatsApp, atau QR di kasir.
+          </p>
+          <form
+            className="booking-directory"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (target) navigate(target);
+            }}
+          >
+            <label htmlFor="shop-link">Link atau nama barbershop</label>
+            <input
+              id="shop-link"
+              value={value}
+              autoCapitalize="none"
+              autoComplete="off"
+              placeholder="garasi-barber"
+              onChange={(e) => setValue(e.target.value)}
+            />
+            <button className={s.primaryButton} type="submit" disabled={!target}>
+              Buka halaman booking →
+            </button>
+          </form>
         </div>
       </div>
     </BookingFrame>

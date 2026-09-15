@@ -1,8 +1,23 @@
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { api, AppData, Entity, rupiah, today, labels } from './api';
+import { api, AppData, dayLabel, Entity, rupiah, shortDate, today, labels } from './api';
 import { useAuth, homeFor } from './auth';
-import { Badge, Card, Table, Form, Modal, FieldSpec, exportCsv } from './ui';
+import {
+  ActionItem,
+  ActionList,
+  Badge,
+  Card,
+  dayNames,
+  exportCsv,
+  FieldSpec,
+  Form,
+  Modal,
+  RowActions,
+  Summary,
+  Table,
+  Toast,
+  ToastView,
+} from './ui';
 import { Booking } from './Booking';
 import {
   WorkspaceShell,
@@ -17,29 +32,45 @@ import { AdminPresentation } from './AdminPresentation';
 import { ManagementView } from './ManagementPresentation';
 import { CashierQueue, CashierShift } from './CashierPresentation';
 import { OutletsPresentation } from './OutletsPresentation';
+import { RescheduleForm } from './Dialogs';
 
+type Values = Record<string, any>;
 type Dialog = {
   title: string;
-  fields: FieldSpec[];
-  endpoint: string;
+  description?: ReactNode;
+  fields?: FieldSpec[];
+  endpoint?: string;
   method?: string;
-  map?: (values: Entity) => Entity;
-  description?: string;
+  map?: (values: Values) => Values;
+  submit?: string;
+  tone?: 'danger';
+  summary?: [string, ReactNode][];
+  preview?: (values: Values) => ReactNode;
+  /** Toast shown after success; receives the API result and submitted values. */
+  success?: string | ((result: Entity, values: Values) => string);
+  custom?: (close: () => void, done: (message: string) => void) => ReactNode;
+  wide?: boolean;
 };
-const fieldReason: FieldSpec = {
+const reasonField = (suggestions: string[], label = 'Alasan'): FieldSpec => ({
   key: 'reason',
-  label: 'Alasan',
-  help: 'Minimal 5 karakter. Tercatat dalam audit.',
-};
-const amount = (key: string, label: string, value = 0): FieldSpec => ({
+  label,
+  type: 'textarea',
+  minLength: 5,
+  suggestions,
+  help: 'Minimal 5 karakter. Tercatat di riwayat audit.',
+});
+const money = (key: string, label: string, value = 0, extra: Partial<FieldSpec> = {}): FieldSpec => ({
   key,
   label,
-  type: 'number',
+  type: 'money',
   min: 0,
   max: 100000000,
   value,
+  ...extra,
 });
 const options = (items: Entity[]) => items.map((i) => ({ value: i.id, label: i.name }));
+const difference = (amount: number, zero: string, plus: string, minus: string) =>
+  amount === 0 ? zero : `${amount > 0 ? plus : minus} ${rupiah(Math.abs(amount))}`;
 
 export function Workspace() {
   const { user, setUser } = useAuth();
@@ -48,7 +79,7 @@ export function Workspace() {
   const [data, setData] = useState<AppData | null>(null),
     [admin, setAdmin] = useState<{ orgs: Entity[]; audit: Entity[] } | null>(null);
   const [error, setError] = useState(''),
-    [notice, setNotice] = useState(''),
+    [toast, setToast] = useState<Toast | null>(null),
     [dialog, setDialog] = useState<Dialog | null>(null),
     [menuOpen, setMenu] = useState(false);
   const [outletFilter, setOutletFilter] = useState(''),
@@ -69,6 +100,7 @@ export function Workspace() {
       setReloading(false);
     }
   }, [user]);
+  const closeToast = useCallback(() => setToast(null), []);
   useEffect(() => {
     void reload();
     const timer = setInterval(reload, 15000);
@@ -78,17 +110,16 @@ export function Workspace() {
     setMenu(false);
     setSearch('');
   }, [location.pathname]);
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(''), 6000);
-    return () => clearTimeout(timer);
-  }, [notice]);
   if (!user) return null;
   const base = homeFor(user),
     page = location.pathname.slice(base.length).replace(/^\//, '') || '';
   const owner = user.role === 'owner';
-  const action = (title: string, endpoint: string, fields: FieldSpec[] = [], extra: Partial<Dialog> = {}) =>
-    setDialog({ title, endpoint, fields, ...extra });
+  const open = (spec: Dialog) => setDialog(spec);
+  const succeed = (title: string, message?: string) => {
+    setDialog(null);
+    setToast({ tone: 'success', title, message });
+    void reload();
+  };
   const outletField: FieldSpec = {
     key: 'outletId',
     label: 'Outlet',
@@ -106,136 +137,240 @@ export function Workspace() {
   const bookingCode = (id: string) => id.slice(0, 8).toUpperCase();
   const activeShift = data?.shifts.find((s) => !s.closed && s.userId === user.id);
   const paidRefunds = data?.refunds.filter((r) => r.status === 'paid') ?? [];
-  function bookingActions(b: Entity) {
-    return (
-      <div className="actions small-actions">
-        {b.status === 'confirmed' && (
-          <button
-            onClick={() =>
-              action('Konfirmasi kedatangan', `app/bookings/${b.id}/status`, [], {
-                map: () => ({ status: 'checked_in' }),
-              })
-            }
-          >
-            Check-in
-          </button>
-        )}
-        {b.status === 'checked_in' && (
-          <button
-            onClick={() =>
-              action('Mulai layanan', `app/bookings/${b.id}/status`, [], {
-                map: () => ({ status: 'in_service' }),
-              })
-            }
-          >
-            Mulai
-          </button>
-        )}
-        {b.status === 'in_service' && (
-          <button
-            onClick={() =>
-              action('Selesaikan layanan', `app/bookings/${b.id}/status`, [], {
-                map: () => ({ status: 'completed' }),
-              })
-            }
-          >
-            Selesai
-          </button>
-        )}
-        {!b.paid && !['cancelled', 'no_show'].includes(b.status) && (
-          <button
-            onClick={() =>
-              action(
-                `Pembayaran tunai · ${rupiah(b.price)}`,
-                `app/bookings/${b.id}/pay`,
-                [amount('tendered', 'Uang diterima', b.price)],
-                {
-                  description:
-                    'Pastikan uang sudah diterima. Kembalian = uang diterima dikurangi total tagihan.',
-                },
-              )
-            }
-          >
-            Bayar tunai
-          </button>
-        )}
-        {['confirmed', 'checked_in'].includes(b.status) && (
-          <>
-            <button
-              onClick={() =>
-                action(
-                  'Ubah jadwal / kapster',
-                  `app/bookings/${b.id}/reschedule`,
-                  [
-                    {
-                      key: 'barberId',
-                      label: 'Kapster',
-                      value: b.barberId,
-                      options: options(
-                        (data?.barbers ?? []).filter((r) => r.outletId === b.outletId && r.active),
-                      ),
-                    },
-                    { key: 'date', label: 'Tanggal', type: 'date', value: b.date, min: today() },
-                    { key: 'time', label: 'Jam (WIB)', type: 'time', value: b.time },
-                    fieldReason,
-                  ],
-                  {
-                    description:
-                      'Server memeriksa jam kerja dan bentrok. Harga serta durasi booking lama tetap dipertahankan.',
-                  },
-                )
-              }
-            >
-              Reschedule
-            </button>
-            <button
-              onClick={() =>
-                action('Batalkan booking', `app/bookings/${b.id}/status`, [fieldReason], {
-                  map: (v) => ({ ...v, status: 'cancelled' }),
-                  description: b.paid
-                    ? 'Pembatalan tidak otomatis mengembalikan uang. Ajukan refund terpisah.'
-                    : undefined,
-                })
-              }
-            >
-              Batalkan
-            </button>
-          </>
-        )}
-        {b.status === 'confirmed' && (
-          <button
-            onClick={() =>
-              action('Tandai tidak hadir', `app/bookings/${b.id}/status`, [fieldReason], {
-                map: (v) => ({ ...v, status: 'no_show' }),
-              })
-            }
-          >
-            No-show
-          </button>
-        )}
-        {!!b.paid && !data?.refunds.some((r) => r.bookingId === b.id) && (
-          <button onClick={() => action('Ajukan refund penuh', `app/bookings/${b.id}/refund`, [fieldReason])}>
-            Refund
-          </button>
-        )}
-      </div>
-    );
+  const bookingSummary = (b: Entity): [string, ReactNode][] => [
+    ['Customer', `${b.name} · ${b.phone}`],
+    ['Layanan', `${b.serviceName} · ${b.duration} menit`],
+    ['Kapster', barberName(b.barberId)],
+    ['Jadwal', `${dayLabel(b.date)} · ${b.time} WIB`],
+    ['Total', rupiah(b.price)],
+  ];
+  const status = (b: Entity, next: string, spec: Omit<Dialog, 'endpoint'>) =>
+    open({
+      endpoint: `app/bookings/${b.id}/status`,
+      summary: bookingSummary(b),
+      map: (v) => ({ ...v, status: next }),
+      ...spec,
+    });
+  function bookingItems(b: Entity): ActionItem[] {
+    const items: ActionItem[] = [];
+    const pay: ActionItem = {
+      label: 'Bayar tunai',
+      onClick: () => {
+        const quick = [...new Set([50000, 100000, 200000].map((step) => Math.ceil(b.price / step) * step))]
+          .filter((v) => v > b.price)
+          .slice(0, 3);
+        open({
+          title: 'Terima pembayaran tunai',
+          description: 'Masukkan jumlah uang yang diterima dari customer. Kembalian dihitung otomatis.',
+          endpoint: `app/bookings/${b.id}/pay`,
+          summary: bookingSummary(b),
+          fields: [
+            money('tendered', 'Uang diterima', b.price, {
+              quick: [
+                { label: 'Uang pas', value: b.price },
+                ...quick.map((v) => ({ label: rupiah(v), value: v })),
+              ],
+            }),
+          ],
+          preview: (v) =>
+            v.tendered >= b.price ? (
+              <span className="preview-ok">
+                {v.tendered === b.price
+                  ? 'Uang pas · tidak ada kembalian'
+                  : `Kembalian ${rupiah(v.tendered - b.price)}`}
+              </span>
+            ) : (
+              <span className="preview-warn">Uang kurang {rupiah(b.price - v.tendered)}</span>
+            ),
+          submit: 'Simpan pembayaran',
+          success: (r) =>
+            `Pembayaran ${rupiah(b.price)} dari ${b.name} tercatat.${r.change ? ` Kembalian ${rupiah(r.change)}.` : ''}`,
+        });
+      },
+    };
+    const unpaid = !b.paid && !['cancelled', 'no_show'].includes(b.status);
+    if (b.status === 'confirmed')
+      items.push({
+        label: 'Check-in',
+        onClick: () =>
+          status(b, 'checked_in', {
+            title: 'Check-in customer',
+            description: 'Pastikan customer sudah tiba di outlet. Booking akan masuk antrean siap dilayani.',
+            submit: 'Ya, customer sudah datang',
+            success: `${b.name} sudah check-in dan menunggu dilayani.`,
+          }),
+      });
+    if (b.status === 'checked_in')
+      items.push({
+        label: 'Mulai layanan',
+        onClick: () =>
+          status(b, 'in_service', {
+            title: 'Mulai layanan',
+            description: `${barberName(b.barberId)} mulai melayani customer ini. Status berubah menjadi Sedang dilayani.`,
+            submit: 'Mulai sekarang',
+            success: `Layanan ${b.name} dimulai.`,
+          }),
+      });
+    if (b.status === 'in_service') {
+      if (unpaid) items.push(pay);
+      else
+        items.push({
+          label: 'Selesai',
+          onClick: () =>
+            status(b, 'completed', {
+              title: 'Selesaikan layanan',
+              description: 'Tandai layanan sudah selesai. Pembayaran untuk booking ini sudah tercatat.',
+              submit: 'Tandai selesai',
+              success: `Layanan ${b.name} selesai.`,
+            }),
+        });
+    } else if (unpaid) items.push({ ...pay, tone: items.length ? 'secondary' : undefined });
+    if (['confirmed', 'checked_in'].includes(b.status)) {
+      items.push({
+        label: 'Ubah jadwal',
+        tone: 'secondary',
+        onClick: () =>
+          open({
+            title: 'Ubah jadwal booking',
+            description: `Saat ini: ${dayLabel(b.date)} · ${b.time} WIB bersama ${barberName(b.barberId)}. Pilih jam kosong yang baru.`,
+            wide: true,
+            custom: (close, done) => (
+              <RescheduleForm
+                booking={b}
+                barbers={(data?.barbers ?? []).filter((r) => r.outletId === b.outletId && r.active)}
+                onCancel={close}
+                onDone={done}
+              />
+            ),
+          }),
+      });
+      items.push({
+        label: 'Batalkan booking',
+        tone: 'danger',
+        onClick: () =>
+          status(b, 'cancelled', {
+            title: 'Batalkan booking?',
+            description: b.paid
+              ? 'Booking akan dibatalkan dan slot kembali tersedia. Pembayaran tidak otomatis dikembalikan; ajukan refund terpisah.'
+              : 'Booking akan dibatalkan dan slot kapster kembali tersedia untuk customer lain.',
+            tone: 'danger',
+            fields: [
+              reasonField(['Customer membatalkan', 'Kapster berhalangan', 'Customer minta ganti hari']),
+            ],
+            submit: 'Batalkan booking',
+            success: `Booking ${b.name} dibatalkan.`,
+          }),
+      });
+    }
+    if (b.status === 'confirmed')
+      items.push({
+        label: 'Tidak hadir',
+        tone: 'danger',
+        onClick: () =>
+          status(b, 'no_show', {
+            title: 'Tandai tidak hadir?',
+            description: 'Gunakan jika customer tidak datang setelah toleransi 15 menit dari jadwal.',
+            tone: 'danger',
+            fields: [reasonField(['Tidak datang setelah 15 menit', 'Tidak bisa dihubungi'])],
+            submit: 'Tandai tidak hadir',
+            success: `${b.name} ditandai tidak hadir.`,
+          }),
+      });
+    if (!!b.paid && !data?.refunds.some((r) => r.bookingId === b.id))
+      items.push({
+        label: 'Ajukan refund',
+        tone: 'secondary',
+        onClick: () =>
+          open({
+            title: 'Ajukan refund penuh',
+            description: `Owner perlu menyetujui sebelum ${rupiah(b.price)} dikembalikan tunai kepada customer.`,
+            endpoint: `app/bookings/${b.id}/refund`,
+            summary: bookingSummary(b),
+            fields: [
+              reasonField([
+                'Customer komplain hasil layanan',
+                'Salah input pembayaran',
+                'Layanan batal dikerjakan',
+              ]),
+            ],
+            submit: 'Kirim pengajuan',
+            success: 'Pengajuan refund terkirim ke Owner.',
+          }),
+      });
+    return items;
   }
+  const bookingActions = (b: Entity, variant: 'row' | 'panel' = 'row') =>
+    variant === 'panel' ? (
+      <ActionList items={bookingItems(b)} />
+    ) : (
+      <RowActions items={bookingItems(b)} label={b.name} />
+    );
+  const openShift = () =>
+    open({
+      title: 'Buka shift kasir',
+      description: 'Hitung uang di laci sebelum mulai. Semua pembayaran tunai akan tercatat pada shift ini.',
+      endpoint: 'app/shifts/open',
+      fields: [
+        ...(user.role === 'cashier' ? [] : [outletField]),
+        money('opening', 'Modal kas awal', 0, {
+          quick: [0, 100000, 200000, 500000].map((v) => ({ label: v ? rupiah(v) : 'Kosong', value: v })),
+          help: 'Uang tunai yang sudah ada di laci saat shift dibuka.',
+        }),
+      ],
+      map: (v) => ({ outletId: user.outletId ?? v.outletId, ...v }),
+      submit: 'Buka shift',
+      success: (_, v) => `Shift dibuka dengan modal ${rupiah(v.opening)}.`,
+    });
+  const closeShift = (s: Entity) => {
+    const own = s.userId === user.id;
+    open({
+      title: own ? 'Tutup shift' : 'Tutup paksa shift kasir',
+      description: own
+        ? 'Hitung uang fisik di laci, lalu masukkan jumlahnya. Alasan wajib diisi jika ada selisih.'
+        : 'Shift ini milik operator lain. Alasan wajib diisi dan tercatat di audit.',
+      tone: own ? undefined : 'danger',
+      endpoint: `app/shifts/${s.id}/close`,
+      summary: [
+        ['Operator', data?.team.find((t) => t.id === s.userId)?.name ?? (own ? user.name : 'Operator')],
+        ['Dibuka', new Date(s.opened).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })],
+        ['Modal awal', rupiah(s.opening)],
+        ['Saldo menurut sistem', rupiah(s.expected)],
+      ],
+      fields: [
+        money('counted', 'Uang fisik terhitung', s.expected, {
+          quick: [{ label: 'Sesuai sistem', value: s.expected }],
+        }),
+        {
+          ...reasonField(
+            ['Uang kembalian kurang', 'Salah hitung kembalian', 'Pengeluaran operasional'],
+            'Alasan selisih',
+          ),
+          required: !own,
+          minLength: undefined,
+          help: own ? 'Wajib jika uang fisik berbeda dengan saldo sistem.' : 'Minimal 5 karakter.',
+        },
+      ],
+      preview: (v) => {
+        const diff = v.counted - s.expected;
+        return (
+          <span className={diff === 0 ? 'preview-ok' : 'preview-warn'}>
+            {difference(diff, 'Uang fisik sesuai saldo sistem', 'Lebih', 'Kurang')}
+            {diff === 0 ? '' : ' · alasan wajib diisi'}
+          </span>
+        );
+      },
+      submit: own ? 'Tutup shift' : 'Tutup paksa',
+      success: (r) =>
+        `Shift ditutup. ${difference(r.variance ?? 0, 'Kas sesuai.', 'Selisih lebih', 'Selisih kurang')}`,
+    });
+  };
   function shiftsPanel() {
     return (
       <Card
         title="Shift dan laci kas"
         action={
           !activeShift && (
-            <button
-              className="primary"
-              onClick={() =>
-                action('Buka shift kasir', 'app/shifts/open', [
-                  outletField,
-                  amount('opening', 'Modal kas awal'),
-                ])
-              }
-            >
+            <button className="primary" onClick={openShift}>
               ＋ Buka shift
             </button>
           )
@@ -251,7 +386,7 @@ export function Workspace() {
             'Outlet',
             'Dibuka',
             'Modal awal',
-            'Saldo / ekspektasi',
+            'Saldo sistem',
             'Kas terhitung',
             'Status',
             'Tindakan',
@@ -260,39 +395,25 @@ export function Workspace() {
             data?.team.find((t) => t.id === s.userId)?.name ??
               (s.userId === user!.id ? user!.name : 'Operator'),
             outletName(s.outletId),
-            new Date(s.opened).toLocaleString('id-ID'),
+            <span className="nowrap">
+              {new Date(s.opened).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+            </span>,
             rupiah(s.opening),
             rupiah(s.expected),
             s.closed ? (
               <>
                 {rupiah(s.counted)}
                 <small>
-                  Selisih {rupiah(s.counted - s.expected)} · {s.reason || 'Sesuai'}
+                  {difference(s.counted - s.expected, 'Sesuai', 'Lebih', 'Kurang')}
+                  {s.reason ? ` · ${s.reason}` : ''}
                 </small>
               </>
             ) : (
               '—'
             ),
-            s.closed ? 'Ditutup' : 'Aktif',
+            <Badge value={s.closed ? 'Ditutup' : 'Aktif'} />,
             !s.closed && (owner || s.userId === user!.id) ? (
-              <button
-                onClick={() =>
-                  action(
-                    s.userId === user!.id ? 'Tutup shift' : 'Force-close shift',
-                    `app/shifts/${s.id}/close`,
-                    [
-                      amount('counted', 'Uang fisik terhitung', s.expected),
-                      { ...fieldReason, required: s.userId !== user!.id },
-                    ],
-                    {
-                      description:
-                        'Hitung uang fisik sebelum mengisi. Alasan wajib jika ada selisih atau menutup shift orang lain.',
-                    },
-                  )
-                }
-              >
-                Tutup shift
-              </button>
+              <button onClick={() => closeShift(s)}>Tutup shift</button>
             ) : (
               '—'
             ),
@@ -328,9 +449,19 @@ export function Workspace() {
           <button
             className="primary"
             onClick={() =>
-              action('Kirim bisnis untuk review', 'app/approval', [], {
+              open({
+                title: 'Kirim bisnis untuk review',
                 description:
-                  'Admin platform akan memeriksa kelengkapan bisnis. Data tetap tersimpan selama menunggu.',
+                  'Admin platform akan memeriksa outlet, layanan, dan kapster Anda. Data tetap bisa dilihat selama menunggu.',
+                endpoint: 'app/approval',
+                summary: [
+                  ['Bisnis', data!.org.name],
+                  ['Outlet', `${data!.outlets.length} outlet`],
+                  ['Layanan aktif', `${data!.services.filter((s) => s.active).length} layanan`],
+                  ['Kapster aktif', `${data!.barbers.filter((b) => b.active).length} kapster`],
+                ],
+                submit: 'Kirim untuk review',
+                success: 'Pengajuan terkirim. Status bisnis sekarang menunggu review Admin.',
               })
             }
           >
@@ -346,6 +477,31 @@ export function Workspace() {
       </Card>
     );
   }
+  const editSlug = () =>
+    open({
+      title: 'Ubah link booking',
+      description:
+        'Link dipakai customer untuk membuka halaman booking bisnis Anda. Setelah outlet pertama diterbitkan, link terkunci permanen agar link yang sudah dibagikan tidak rusak.',
+      endpoint: 'app/org',
+      method: 'PATCH',
+      fields: [
+        {
+          key: 'slug',
+          label: 'Link booking',
+          value: data?.org.slug,
+          minLength: 3,
+          help: `Huruf kecil, angka, dan tanda hubung. Hasil: ${window.location.origin}/booking/nama-link`,
+          wide: true,
+        },
+      ],
+      preview: (v) => (
+        <span className="preview-ok">
+          {window.location.origin}/booking/{String(v.slug).toLowerCase()}
+        </span>
+      ),
+      submit: 'Simpan link',
+      success: (r) => r.message,
+    });
   function renderApp(): ReactNode {
     if (!data) return <p role="status">Memuat data operasional…</p>;
     switch (page) {
@@ -387,22 +543,19 @@ export function Workspace() {
         return activeShift ? (
           <Booking
             internal
+            initialOutlet={activeShift.outletId}
             catalog={{
               outlets: data.outlets.filter((o) => o.id === activeShift.outletId),
-              services: data.services,
-              barbers: data.barbers,
+              services: data.services.filter((s) => s.active),
+              barbers: data.barbers.filter((b) => b.active),
+              org: { name: data.org.name, slug: data.org.slug },
             }}
             onBooked={() => void reload()}
           />
         ) : (
           <Card title="Buka shift terlebih dahulu">
             <p>Booking kasir dan penerimaan tunai terikat pada shift outlet.</p>
-            <button
-              className="primary"
-              onClick={() =>
-                action('Buka shift', 'app/shifts/open', [outletField, amount('opening', 'Modal awal')])
-              }
-            >
+            <button className="primary" onClick={openShift}>
               Buka shift
             </button>
           </Card>
@@ -411,32 +564,91 @@ export function Workspace() {
         return (
           <OutletsPresentation
             data={data}
+            editSlug={editSlug}
             add={() =>
-              action('Tambah outlet', 'app/outlets', [
-                { key: 'name', label: 'Nama outlet' },
-                { key: 'address', label: 'Alamat' },
-              ])
-            }
-            edit={(outlet) =>
-              action(
-                'Pengaturan outlet',
-                `app/outlets/${outlet.id}`,
-                [
-                  { key: 'name', label: 'Nama outlet', value: outlet.name },
-                  { key: 'address', label: 'Alamat', value: outlet.address },
+              open({
+                title: 'Tambah outlet',
+                description:
+                  'Outlet baru belum tampil di halaman booking. Tambahkan layanan dan kapster, lalu terbitkan dari tombol Edit outlet.',
+                endpoint: 'app/outlets',
+                fields: [
                   {
-                    key: 'published',
-                    label: 'Terbitkan booking publik',
-                    type: 'checkbox',
-                    value: !!outlet.published,
+                    key: 'name',
+                    label: 'Nama outlet',
+                    minLength: 2,
+                    placeholder: 'Contoh: Garasi Barber Kemang',
+                    wide: true,
+                  },
+                  {
+                    key: 'address',
+                    label: 'Alamat',
+                    type: 'textarea',
+                    minLength: 2,
+                    placeholder: 'Jalan, nomor, kecamatan, kota',
                   },
                 ],
-                { method: 'PATCH' },
-              )
+                submit: 'Tambah outlet',
+                success: (_, v) => `${v.name} ditambahkan.`,
+              })
+            }
+            edit={(outlet) =>
+              open({
+                title: 'Edit outlet',
+                description: 'Perubahan nama dan alamat langsung tampil di halaman booking outlet ini.',
+                endpoint: `app/outlets/${outlet.id}`,
+                method: 'PATCH',
+                fields: [
+                  { key: 'name', label: 'Nama outlet', value: outlet.name, minLength: 2, wide: true },
+                  { key: 'address', label: 'Alamat', type: 'textarea', value: outlet.address, minLength: 2 },
+                  {
+                    key: 'published',
+                    label: 'Terima booking online',
+                    type: 'checkbox',
+                    value: !!outlet.published,
+                    help: `Customer dapat booking lewat /booking/${data.org.slug}/${outlet.slug}. Butuh bisnis disetujui serta minimal satu layanan dan kapster aktif.`,
+                  },
+                ],
+                submit: 'Simpan outlet',
+                success: (_, v) =>
+                  v.published
+                    ? `${v.name} menerima booking online.`
+                    : `${v.name} disimpan (booking online nonaktif).`,
+              })
             }
           />
         );
-      case 'services':
+      case 'services': {
+        const serviceFields = (s?: Entity): FieldSpec[] => [
+          ...(s ? [] : [outletField]),
+          {
+            key: 'name',
+            label: 'Nama layanan',
+            value: s?.name,
+            minLength: 2,
+            placeholder: 'Contoh: Haircut + Wash',
+          },
+          money('price', 'Harga', s?.price ?? 0, { min: 0 }),
+          {
+            key: 'duration',
+            label: 'Durasi',
+            type: 'duration',
+            min: 5,
+            max: 240,
+            value: s?.duration ?? 45,
+            wide: true,
+          },
+          ...(s
+            ? [
+                {
+                  key: 'active',
+                  label: 'Layanan aktif',
+                  type: 'checkbox',
+                  value: !!s.active,
+                  help: 'Layanan nonaktif tidak bisa dipilih di booking baru.',
+                } as FieldSpec,
+              ]
+            : []),
+        ];
         return (
           <Card
             title="Layanan & harga"
@@ -445,12 +657,15 @@ export function Workspace() {
                 className="primary"
                 disabled={!data.outlets.length}
                 onClick={() =>
-                  action('Tambah layanan', 'app/services', [
-                    outletField,
-                    { key: 'name', label: 'Nama layanan' },
-                    amount('price', 'Harga'),
-                    { key: 'duration', label: 'Durasi (menit)', type: 'number', min: 5, max: 240, value: 45 },
-                  ])
+                  open({
+                    title: 'Tambah layanan',
+                    description:
+                      'Durasi menentukan panjang slot booking. Sistem menambah jeda 10 menit antar booking.',
+                    endpoint: 'app/services',
+                    fields: serviceFields(),
+                    submit: 'Tambah layanan',
+                    success: (_, v) => `${v.name} · ${rupiah(v.price)} ditambahkan.`,
+                  })
                 }
               >
                 ＋ Tambah layanan
@@ -464,30 +679,18 @@ export function Workspace() {
                 outletName(s.outletId),
                 rupiah(s.price),
                 `${s.duration} menit`,
-                s.active ? 'Aktif' : 'Arsip',
+                <Badge value={s.active ? 'Aktif' : 'Nonaktif'} />,
                 <button
                   onClick={() =>
-                    action(
-                      'Edit layanan',
-                      `app/services/${s.id}`,
-                      [
-                        { key: 'name', label: 'Nama', value: s.name },
-                        amount('price', 'Harga', s.price),
-                        {
-                          key: 'duration',
-                          label: 'Durasi (menit)',
-                          type: 'number',
-                          min: 5,
-                          max: 240,
-                          value: s.duration,
-                        },
-                        { key: 'active', label: 'Aktif', type: 'checkbox', value: !!s.active },
-                      ],
-                      {
-                        method: 'PATCH',
-                        description: 'Perubahan harga dan durasi tidak mengubah booking yang sudah dibuat.',
-                      },
-                    )
+                    open({
+                      title: `Edit layanan · ${s.name}`,
+                      description: 'Perubahan harga dan durasi hanya berlaku untuk booking baru.',
+                      endpoint: `app/services/${s.id}`,
+                      method: 'PATCH',
+                      fields: serviceFields(s),
+                      submit: 'Simpan layanan',
+                      success: (_, v) => `${v.name} diperbarui.`,
+                    })
                   }
                 >
                   Edit
@@ -496,18 +699,64 @@ export function Workspace() {
             />
           </Card>
         );
+      }
       case 'barbers': {
         const barberFields = (b?: Entity): FieldSpec[] => [
-          { key: 'name', label: 'Nama kapster', value: b?.name },
-          { key: 'start', label: 'Mulai kerja (WIB)', type: 'time', value: b?.start ?? '09:00' },
-          { key: 'end', label: 'Selesai kerja (WIB)', type: 'time', value: b?.end ?? '18:00' },
+          ...(b ? [] : [outletField]),
+          {
+            key: 'name',
+            label: 'Nama kapster',
+            value: b?.name,
+            minLength: 2,
+            placeholder: 'Contoh: Raka Pratama',
+          },
+          {
+            key: 'start',
+            label: 'Mulai kerja',
+            type: 'clock',
+            value: b?.start ?? '09:00',
+            presets: [
+              { label: '09–18', values: { start: '09:00', end: '18:00' } },
+              { label: '10–20', values: { start: '10:00', end: '20:00' } },
+              { label: '10–22', values: { start: '10:00', end: '22:00' } },
+            ],
+          },
+          { key: 'end', label: 'Selesai kerja', type: 'clock', value: b?.end ?? '18:00' },
           {
             key: 'days',
             label: 'Hari kerja',
-            value: b ? JSON.parse(b.days).join(',') : '1,2,3,4,5,6',
-            help: '0=Minggu, 1=Senin, … 6=Sabtu. Pisahkan dengan koma.',
+            type: 'days',
+            value: b ? JSON.parse(b.days) : [1, 2, 3, 4, 5, 6],
           },
+          ...(b
+            ? [
+                {
+                  key: 'active',
+                  label: 'Kapster aktif',
+                  type: 'checkbox',
+                  value: !!b.active,
+                  help: 'Kapster nonaktif tidak muncul di booking baru.',
+                } as FieldSpec,
+              ]
+            : []),
         ];
+        const hours = (v: Values) => {
+          const span =
+            Number(v.end.slice(0, 2)) * 60 +
+            Number(v.end.slice(3)) -
+            (Number(v.start.slice(0, 2)) * 60 + Number(v.start.slice(3)));
+          return span > 0
+            ? `${Math.floor(span / 60)} jam${span % 60 ? ` ${span % 60} menit` : ''} per hari`
+            : 'Jam belum valid';
+        };
+        const schedulePreview = (v: Values) =>
+          v.days.length ? (
+            <span className="preview-ok">
+              {dayNames(v.days)} · {v.start}–{v.end} WIB · {hours(v)}
+            </span>
+          ) : (
+            <span className="preview-warn">Belum ada hari kerja dipilih</span>
+          );
         return (
           <>
             <Card
@@ -517,8 +766,14 @@ export function Workspace() {
                   className="primary"
                   disabled={!data.outlets.length}
                   onClick={() =>
-                    action('Tambah kapster', 'app/barbers', [outletField, ...barberFields()], {
-                      map: (v) => ({ ...v, days: v.days.split(',').map(Number) }),
+                    open({
+                      title: 'Tambah kapster',
+                      description: 'Slot booking dibuat otomatis dari jam dan hari kerja kapster.',
+                      endpoint: 'app/barbers',
+                      fields: barberFields(),
+                      preview: schedulePreview,
+                      submit: 'Tambah kapster',
+                      success: (_, v) => `${v.name} ditambahkan · ${dayNames(v.days)} ${v.start}–${v.end}.`,
                     })
                   }
                 >
@@ -531,22 +786,24 @@ export function Workspace() {
                 rows={filtered(data.barbers).map((b) => [
                   b.name,
                   outletName(b.outletId),
-                  `${b.start}–${b.end}`,
-                  JSON.parse(b.days)
-                    .map((n: number) => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][n])
-                    .join(', '),
-                  b.active ? 'Aktif' : 'Nonaktif',
+                  <span className="nowrap">
+                    {b.start}–{b.end}
+                  </span>,
+                  dayNames(JSON.parse(b.days)),
+                  <Badge value={b.active ? 'Aktif' : 'Nonaktif'} />,
                   <button
                     onClick={() =>
-                      action(
-                        'Edit jadwal kapster',
-                        `app/barbers/${b.id}`,
-                        [
-                          ...barberFields(b),
-                          { key: 'active', label: 'Aktif', type: 'checkbox', value: !!b.active },
-                        ],
-                        { method: 'PATCH', map: (v) => ({ ...v, days: v.days.split(',').map(Number) }) },
-                      )
+                      open({
+                        title: `Edit jadwal · ${b.name}`,
+                        description:
+                          'Jadwal tidak bisa dipersempit jika masih ada booking mendatang di luar jam atau hari baru.',
+                        endpoint: `app/barbers/${b.id}`,
+                        method: 'PATCH',
+                        fields: barberFields(b),
+                        preview: schedulePreview,
+                        submit: 'Simpan jadwal',
+                        success: (_, v) => `Jadwal ${v.name} diperbarui.`,
+                      })
                     }
                   >
                     Edit
@@ -560,19 +817,20 @@ export function Workspace() {
                 <button
                   disabled={!data.barbers.length}
                   onClick={() =>
-                    action(
-                      'Blok satu hari',
-                      'app/blocks',
-                      [
-                        { key: 'barberId', label: 'Kapster', options: options(data.barbers) },
+                    open({
+                      title: 'Blok jadwal kapster',
+                      description:
+                        'Kapster tidak menerima booking baru di tanggal ini. Booking yang sudah ada tetap tercatat dan perlu dipindah atau dibatalkan dari menu Booking.',
+                      endpoint: 'app/blocks',
+                      fields: [
+                        { key: 'barberId', label: 'Kapster', options: options(filtered(data.barbers)) },
                         { key: 'date', label: 'Tanggal', type: 'date', min: today(), value: today() },
-                        fieldReason,
+                        reasonField(['Cuti', 'Sakit', 'Pelatihan', 'Libur nasional']),
                       ],
-                      {
-                        description:
-                          'Booking lama tetap tercatat. Pindahkan atau batalkan booking terdampak melalui menu Booking.',
-                      },
-                    )
+                      submit: 'Blok tanggal ini',
+                      success: (r, v) =>
+                        `${barberName(v.barberId)} diblok pada ${shortDate(v.date)}.${r.affected?.length ? ` ${r.affected.length} booking terdampak perlu ditangani.` : ''}`,
+                    })
                   }
                 >
                   ＋ Blok jadwal
@@ -581,20 +839,38 @@ export function Workspace() {
             >
               <Table
                 headers={['Kapster', 'Tanggal', 'Alasan', 'Booking terdampak', 'Tindakan']}
-                rows={filtered(data.blocks).map((b) => [
-                  barberName(b.barberId),
-                  b.date,
-                  b.reason,
-                  data.bookings.filter(
+                rows={filtered(data.blocks).map((b) => {
+                  const affected = data.bookings.filter(
                     (r) =>
                       r.barberId === b.barberId &&
                       r.date === b.date &&
                       !['cancelled', 'completed', 'no_show'].includes(r.status),
-                  ).length,
-                  <button onClick={() => action('Buka kembali jadwal', `app/blocks/${b.id}/remove`)}>
-                    Hapus blok
-                  </button>,
-                ])}
+                  ).length;
+                  return [
+                    barberName(b.barberId),
+                    <span className="nowrap">{shortDate(b.date)}</span>,
+                    b.reason,
+                    affected ? <Badge value={`${affected} booking`} /> : 'Tidak ada',
+                    <button
+                      onClick={() =>
+                        open({
+                          title: 'Buka kembali jadwal?',
+                          description: 'Kapster akan kembali menerima booking pada tanggal ini.',
+                          endpoint: `app/blocks/${b.id}/remove`,
+                          summary: [
+                            ['Kapster', barberName(b.barberId)],
+                            ['Tanggal', shortDate(b.date)],
+                            ['Alasan blok', b.reason],
+                          ],
+                          submit: 'Buka jadwal',
+                          success: `Jadwal ${barberName(b.barberId)} pada ${shortDate(b.date)} dibuka kembali.`,
+                        })
+                      }
+                    >
+                      Hapus blok
+                    </button>,
+                  ];
+                })}
               />
             </Card>
           </>
@@ -610,16 +886,19 @@ export function Workspace() {
                   className="primary"
                   disabled={!data.outlets.length}
                   onClick={() =>
-                    action(
-                      'Undang kasir',
-                      'app/team',
-                      [
-                        { key: 'name', label: 'Nama' },
+                    open({
+                      title: 'Undang kasir',
+                      description:
+                        'Kasir menerima email untuk membuat password. Pada mode lokal, email tersimpan di kotak email lokal (npm run local:mail).',
+                      endpoint: 'app/team',
+                      fields: [
+                        { key: 'name', label: 'Nama', minLength: 2 },
                         { key: 'email', label: 'Email', type: 'email' },
-                        outletField,
+                        { ...outletField, wide: true },
                       ],
-                      { description: 'Undangan pengaturan password dikirim ke kotak email lokal.' },
-                    )
+                      submit: 'Kirim undangan',
+                      success: (_, v) => `Undangan untuk ${v.email} dibuat.`,
+                    })
                   }
                 >
                   ＋ Undang kasir
@@ -637,15 +916,24 @@ export function Workspace() {
                   t.role === 'cashier' ? (
                     <button
                       onClick={() =>
-                        action(
-                          'Edit akses kasir',
-                          `app/team/${t.id}`,
-                          [
-                            { ...outletField, value: t.outletId },
-                            { key: 'active', label: 'Akses aktif', type: 'checkbox', value: !!t.active },
+                        open({
+                          title: `Akses kasir · ${t.name}`,
+                          description: 'Menyimpan perubahan akan mengeluarkan kasir dari semua perangkat.',
+                          endpoint: `app/team/${t.id}`,
+                          method: 'PATCH',
+                          fields: [
+                            { ...outletField, value: t.outletId, wide: true },
+                            {
+                              key: 'active',
+                              label: 'Akses aktif',
+                              type: 'checkbox',
+                              value: !!t.active,
+                              help: 'Kasir nonaktif tidak bisa login.',
+                            },
                           ],
-                          { method: 'PATCH', description: 'Perubahan akan mencabut session login kasir.' },
-                        )
+                          submit: 'Simpan akses',
+                          success: `Akses ${t.name} diperbarui.`,
+                        })
                       }
                     >
                       Edit akses
@@ -666,20 +954,8 @@ export function Workspace() {
           <CashierShift
             data={data}
             user={user!}
-            open={() =>
-              action('Buka shift kasir', 'app/shifts/open', [
-                outletField,
-                amount('opening', 'Modal kas awal'),
-              ])
-            }
-            close={(s) =>
-              action(
-                'Tutup shift',
-                `app/shifts/${s.id}/close`,
-                [amount('counted', 'Uang fisik terhitung', s.expected), { ...fieldReason, required: false }],
-                { description: 'Hitung uang fisik sebelum mengisi. Alasan wajib jika ada selisih.' },
-              )
-            }
+            open={openShift}
+            close={closeShift}
             history={shiftsPanel()}
           />
         );
@@ -730,7 +1006,9 @@ export function Workspace() {
                   outletName(p.outletId),
                   rupiah(p.amount),
                   `${rupiah(p.tendered)} / ${rupiah(p.tendered - p.amount)}`,
-                  new Date(p.created).toLocaleString('id-ID'),
+                  <span className="nowrap">
+                    {new Date(p.created).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>,
                 ])}
               />
               <p className="muted">
@@ -740,48 +1018,74 @@ export function Workspace() {
             <Card title="Pengajuan refund">
               <Table
                 headers={['Booking', 'Alasan', 'Status', 'Keputusan Owner', 'Tindakan']}
-                rows={filtered(data.refunds).map((r) => [
-                  bookingCode(r.bookingId),
-                  r.reason,
-                  <Badge value={r.status} />,
-                  r.decisionReason || '—',
-                  <div className="actions">
-                    {owner && r.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() =>
-                            action('Setujui refund', `app/refunds/${r.id}/decision`, [fieldReason], {
-                              map: (v) => ({ ...v, approved: true }),
-                            })
-                          }
-                        >
-                          Setujui
-                        </button>
-                        <button
-                          onClick={() =>
-                            action('Tolak refund', `app/refunds/${r.id}/decision`, [fieldReason], {
-                              map: (v) => ({ ...v, approved: false }),
-                            })
-                          }
-                        >
-                          Tolak
-                        </button>
-                      </>
-                    )}
-                    {r.status === 'approved' && (
-                      <button
-                        onClick={() =>
-                          action('Catat pengembalian tunai', `app/refunds/${r.id}/disburse`, [], {
+                rows={filtered(data.refunds).map((r) => {
+                  const b = data.bookings.find((v) => v.id === r.bookingId);
+                  const refundSummary: [string, ReactNode][] = [
+                    ['Booking', `#${bookingCode(r.bookingId)}${b ? ` · ${b.name}` : ''}`],
+                    ['Jumlah', b ? rupiah(b.price) : '—'],
+                    ['Alasan kasir', r.reason],
+                  ];
+                  const items: ActionItem[] = [];
+                  if (owner && r.status === 'pending')
+                    items.push(
+                      {
+                        label: 'Setujui',
+                        onClick: () =>
+                          open({
+                            title: 'Setujui refund',
                             description:
-                              'Lakukan hanya setelah uang benar-benar dikembalikan kepada customer. Saldo shift aktif akan dikurangi.',
-                          })
-                        }
-                      >
-                        Uang sudah dikembalikan
-                      </button>
-                    )}
-                  </div>,
-                ])}
+                              'Setelah disetujui, kasir mengembalikan uang tunai dan mencatatnya dari shift aktif.',
+                            endpoint: `app/refunds/${r.id}/decision`,
+                            summary: refundSummary,
+                            fields: [
+                              reasonField(['Komplain valid', 'Kesalahan input kasir'], 'Catatan keputusan'),
+                            ],
+                            map: (v) => ({ ...v, approved: true }),
+                            submit: 'Setujui refund',
+                            success: 'Refund disetujui. Kasir dapat mengembalikan uang.',
+                          }),
+                      },
+                      {
+                        label: 'Tolak',
+                        tone: 'danger',
+                        onClick: () =>
+                          open({
+                            title: 'Tolak refund?',
+                            description: 'Pengajuan ditutup dan uang tidak dikembalikan.',
+                            tone: 'danger',
+                            endpoint: `app/refunds/${r.id}/decision`,
+                            summary: refundSummary,
+                            fields: [
+                              reasonField(['Layanan sudah sesuai', 'Bukti tidak cukup'], 'Alasan penolakan'),
+                            ],
+                            map: (v) => ({ ...v, approved: false }),
+                            submit: 'Tolak refund',
+                            success: 'Refund ditolak.',
+                          }),
+                      },
+                    );
+                  if (r.status === 'approved')
+                    items.push({
+                      label: 'Uang sudah dikembalikan',
+                      onClick: () =>
+                        open({
+                          title: 'Catat pengembalian tunai',
+                          description:
+                            'Lakukan hanya setelah uang benar-benar diserahkan kepada customer. Saldo shift aktif Anda akan berkurang.',
+                          endpoint: `app/refunds/${r.id}/disburse`,
+                          summary: refundSummary,
+                          submit: 'Ya, uang sudah diserahkan',
+                          success: 'Pengembalian tunai tercatat pada shift aktif.',
+                        }),
+                    });
+                  return [
+                    bookingCode(r.bookingId),
+                    r.reason,
+                    <Badge value={r.status} />,
+                    r.decisionReason || '—',
+                    <RowActions items={items} label={`refund ${bookingCode(r.bookingId)}`} />,
+                  ];
+                })}
               />
             </Card>
           </>
@@ -887,7 +1191,12 @@ export function Workspace() {
                   <Table
                     headers={['Waktu', 'Aktor', 'Tindakan', 'Alasan']}
                     rows={data.audit.map((a) => [
-                      new Date(a.created).toLocaleString('id-ID'),
+                      <span className="nowrap">
+                        {new Date(a.created).toLocaleString('id-ID', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                      </span>,
                       a.actorName || a.actor,
                       a.action,
                       a.reason || '—',
@@ -906,34 +1215,43 @@ export function Workspace() {
         );
     }
   }
-  const modal = (
-    <>
-      {' '}
-      {dialog && (
-        <Modal title={dialog.title} close={() => setDialog(null)}>
-          {dialog.description && <p className="muted">{dialog.description}</p>}
-          <Form
-            fields={dialog.fields}
-            onSubmit={async (values) => {
-              const result = await api(
-                dialog.endpoint,
-                dialog.map ? dialog.map(values) : values,
-                dialog.method ?? 'POST',
-              );
-              setDialog(null);
-              setNotice(
-                result.message ??
-                  (result.affected?.length
-                    ? `Tersimpan. ${result.affected.length} booking terdampak; periksa menu Booking.`
-                    : 'Perubahan berhasil disimpan.'),
-              );
-              await reload();
-            }}
-          />
-        </Modal>
+  const close = () => setDialog(null);
+  const modal = dialog && (
+    <Modal
+      title={dialog.title}
+      description={dialog.description}
+      tone={dialog.tone}
+      size={dialog.wide ? 'wide' : undefined}
+      close={close}
+    >
+      {dialog.summary && <Summary rows={dialog.summary} />}
+      {dialog.custom ? (
+        dialog.custom(close, (message) => succeed('Berhasil disimpan', message))
+      ) : (
+        <Form
+          fields={dialog.fields ?? []}
+          submit={dialog.submit}
+          tone={dialog.tone}
+          preview={dialog.preview}
+          onCancel={close}
+          onSubmit={async (values) => {
+            const result = await api(
+              dialog.endpoint!,
+              dialog.map ? dialog.map(values) : values,
+              dialog.method ?? 'POST',
+            );
+            const message =
+              typeof dialog.success === 'function' ? dialog.success(result, values) : dialog.success;
+            succeed(
+              dialog.tone === 'danger' ? 'Tindakan dicatat' : 'Berhasil disimpan',
+              message ?? result.message,
+            );
+          }}
+        />
       )}
-    </>
+    </Modal>
   );
+  const toastView = <ToastView toast={toast} onClose={closeToast} />;
   if (owner && data && ['onboarding', 'approval'].includes(page))
     return (
       <>
@@ -943,14 +1261,10 @@ export function Workspace() {
               {error}
             </p>
           )}
-          {notice && (
-            <p role="status" className="success">
-              {notice}
-            </p>
-          )}
           {setupPanel()}
         </SetupPage>
         {modal}
+        {toastView}
       </>
     );
   return (
@@ -969,7 +1283,7 @@ export function Workspace() {
             setUser(null);
             navigate('/login');
           } catch (e) {
-            setError((e as Error).message);
+            setToast({ tone: 'error', title: 'Belum bisa keluar', message: (e as Error).message });
           }
         }}
       >
@@ -990,17 +1304,12 @@ export function Workspace() {
             </select>
           )}
           <button disabled={reloading} onClick={() => void reload()} aria-label="Muat ulang data">
-            {reloading ? 'Memuat…' : '↻ Muat ulang'}
+            <span aria-hidden="true">↻</span> {reloading ? 'Memuat…' : 'Muat ulang'}
           </button>
         </PageTitle>
         {error && (
           <div className="error" role="alert">
             {error}
-          </div>
-        )}
-        {notice && (
-          <div className="success" role="status">
-            {notice}
           </div>
         )}
         {user.role === 'admin' ? (
@@ -1009,23 +1318,47 @@ export function Workspace() {
               data={admin}
               page={page}
               search={search}
-              onDecision={(org, status) =>
-                action(
-                  status === 'approved'
-                    ? 'Setujui bisnis'
-                    : status === 'rejected'
-                      ? 'Kembalikan untuk revisi'
-                      : 'Tangguhkan bisnis',
-                  `admin/orgs/${org.id}/status`,
-                  [fieldReason],
-                  {
-                    map: (v) => ({ ...v, status }),
-                    description:
-                      status === 'suspended'
-                        ? 'Booking publik dihentikan. Data transaksi tetap tersimpan.'
-                        : 'Keputusan dan alasan dicatat dalam audit.',
-                  },
-                )
+              onDecision={(org, next) =>
+                open({
+                  title:
+                    next === 'approved'
+                      ? `Setujui ${org.name}?`
+                      : next === 'rejected'
+                        ? `Minta revisi ${org.name}`
+                        : `Tangguhkan ${org.name}?`,
+                  description:
+                    next === 'suspended'
+                      ? 'Semua outlet berhenti menerima booking publik. Data transaksi tetap tersimpan dan bisa diaktifkan kembali.'
+                      : next === 'approved'
+                        ? 'Owner dapat mulai beroperasi dan menerbitkan halaman booking outlet.'
+                        : 'Owner akan melihat catatan ini dan dapat mengajukan ulang setelah memperbaiki setup.',
+                  tone: next === 'approved' ? undefined : 'danger',
+                  endpoint: `admin/orgs/${org.id}/status`,
+                  summary: [
+                    ['Bisnis', org.name],
+                    ['Owner', org.owners?.[0]?.email],
+                    ['Outlet', `${org.outlets} outlet`],
+                    ['Status saat ini', labels[org.status] ?? org.status],
+                  ],
+                  fields: [
+                    reasonField(
+                      next === 'approved'
+                        ? ['Setup lengkap dan sesuai', 'Masalah sudah diselesaikan']
+                        : next === 'rejected'
+                          ? ['Data layanan belum lengkap', 'Alamat outlet belum jelas']
+                          : ['Pelanggaran ketentuan', 'Permintaan Owner'],
+                      next === 'rejected' ? 'Catatan revisi untuk Owner' : 'Alasan',
+                    ),
+                  ],
+                  map: (v) => ({ ...v, status: next }),
+                  submit:
+                    next === 'approved'
+                      ? 'Setujui bisnis'
+                      : next === 'rejected'
+                        ? 'Kirim catatan revisi'
+                        : 'Tangguhkan',
+                  success: `${org.name}: ${labels[next]}.`,
+                })
               }
             />
           ) : (
@@ -1042,6 +1375,7 @@ export function Workspace() {
         )}
       </WorkspaceShell>
       {modal}
+      {toastView}
     </>
   );
 }

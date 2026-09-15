@@ -1,8 +1,9 @@
 import { ReactNode, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AppData, Entity, User, labels, rupiah, today } from './api';
+import { AppData, dayLabel, Entity, User, labels, rupiah, shortDate, today } from './api';
 import { Badge, Card, Empty, Table, exportCsv } from './ui';
 import { Glyph } from './Glyph';
+import { calendarLanes, cardHeight } from './calendarLanes';
 import { Logo } from '../../../components/ui/Logo';
 import o from '../../../components/owner/OwnerDashboard.module.css';
 import c from '../../../components/cashier/CashierDashboard.module.css';
@@ -12,7 +13,7 @@ import f from '../../../components/onboarding/FlowPage.module.css';
 export const visualMenus = {
   owner: [
     ['', 'Dashboard', 'home'],
-    ['bookings', 'Booking', 'calendar'],
+    ['bookings', 'Booking', 'clock'],
     ['calendar', 'Kalender', 'calendar'],
     ['transactions', 'Transaksi', 'receipt'],
     ['reports', 'Laporan', 'chart'],
@@ -35,10 +36,10 @@ export const visualMenus = {
   admin: [
     ['', 'Overview', 'home'],
     ['tenants', 'Tenants', 'store'],
-    ['tenant-detail', 'Tenant Detail', 'store'],
+    ['tenant-detail', 'Tenant Detail', 'customer'],
     ['onboarding', 'Onboarding', 'check'],
     ['subscription', 'Subscription', 'card'],
-    ['operations', 'Operations', 'settings'],
+    ['operations', 'Operations', 'briefcase'],
     ['support', 'Support', 'phone'],
     ['analytics', 'Analytics', 'chart'],
     ['audit', 'Audit & Security', 'lock'],
@@ -240,6 +241,17 @@ export function WorkspaceShell({
             <strong>Kapster.id Admin Platform</strong>
             <span>Lingkungan lokal</span>
           </div>
+        )}
+        {user.role === 'cashier' && (
+          /* The icon rail hides the shift card, so keep one compact shift control there. */
+          <button
+            className={`rail-shift ${shift ? 'on' : ''}`}
+            onClick={() => go('shifts')}
+            aria-label={shift ? 'Shift aktif. Buka Shift Kasir' : 'Shift belum dibuka. Buka Shift Kasir'}
+          >
+            <Glyph name="wallet" />
+            <small>{shift ? 'Shift aktif' : 'Mulai shift'}</small>
+          </button>
         )}
       </aside>
       <div className={s.appBody}>
@@ -630,14 +642,15 @@ export function BookingList({
 }: {
   data: AppData;
   bookings: Entity[];
-  actions: (b: Entity) => ReactNode;
+  actions: (b: Entity, variant?: 'row' | 'panel') => ReactNode;
   search: string;
   setSearch: (s: string) => void;
   base: string;
   cashier?: boolean;
 }) {
   const [selectedId, setSelected] = useState(''),
-    [status, setStatus] = useState('all');
+    [status, setStatus] = useState('all'),
+    [drawer, setDrawer] = useState(false);
   const rows = bookings
     .filter((b) => status === 'all' || b.status === status)
     .sort((x, y) => x.starts - y.starts);
@@ -685,12 +698,15 @@ export function BookingList({
               </select>
             </div>
             <Table
-              headers={['Customer', 'Layanan', 'Outlet / Kapster', 'Jadwal', 'Status', 'Pembayaran', 'Aksi']}
+              headers={['Customer', 'Layanan', 'Outlet / Kapster', 'Jadwal', 'Status', 'Aksi']}
               rows={rows.map((b) => [
                 <button
                   className="person-link"
                   aria-label={`Detail booking ${b.name}`}
-                  onClick={() => setSelected(b.id)}
+                  onClick={() => {
+                    setSelected(b.id);
+                    setDrawer(true);
+                  }}
                 >
                   <Person name={b.name} detail={`#${b.id.slice(0, 8).toUpperCase()} · ${b.phone}`} />
                 </button>,
@@ -699,24 +715,43 @@ export function BookingList({
                   {outlet(b.outletId)}
                   <small>{data.barbers.find((v) => v.id === b.barberId)?.name}</small>
                 </>,
-                <>
-                  {b.time}
-                  <small>{b.date}</small>
-                </>,
-                <Badge value={b.status} />,
-                <Badge value={b.paid ? 'Lunas' : 'Belum bayar'} />,
+                <span className="nowrap">
+                  <strong>{b.time}</strong>
+                  <small>{dayLabel(b.date)}</small>
+                </span>,
+                <span className="badge-stack">
+                  <Badge value={b.status} />
+                  <Badge value={b.paid ? 'Lunas' : 'Belum bayar'} />
+                </span>,
                 actions(b),
               ])}
             />
             <div className="table-footer">
-              {rows.length} booking ditampilkan <span>Pilih customer untuk melihat detail</span>
+              {rows.length} booking ditampilkan <span>Ketuk nama customer untuk melihat detail</span>
             </div>
           </Card>
         </div>
-        <section className={`${o.panel} ${o.detailPanel}`}>
+        {drawer && (
+          <button
+            className="detail-drawer-backdrop"
+            aria-label="Tutup detail booking"
+            onClick={() => setDrawer(false)}
+          />
+        )}
+        <section
+          className={`${o.panel} ${o.detailPanel} detail-drawer ${drawer ? 'open' : ''}`}
+          aria-label="Detail booking"
+        >
           <div className={o.detailTitle}>
             <h3>Detail Booking</h3>
             <Glyph name="calendar" size={18} />
+            <button
+              className="icon-button detail-drawer-close"
+              aria-label="Tutup detail"
+              onClick={() => setDrawer(false)}
+            >
+              <Glyph name="close" size={18} />
+            </button>
           </div>
           {selected ? (
             <>
@@ -733,7 +768,7 @@ export function BookingList({
               <h3>Detail Reservasi</h3>
               <dl className={o.detailList}>
                 {[
-                  ['Tanggal & Jam', `${selected.date} · ${selected.time} WIB`],
+                  ['Tanggal & Jam', `${shortDate(selected.date)} · ${selected.time} WIB`],
                   ['Outlet', outlet(selected.outletId)],
                   ['Kapster', data.barbers.find((v) => v.id === selected.barberId)?.name],
                   ['Status', <Badge value={selected.status} />],
@@ -759,7 +794,7 @@ export function BookingList({
                 <span>Total</span>
                 <strong>{rupiah(selected.price)}</strong>
               </div>
-              <div className={o.detailActions}>{actions(selected)}</div>
+              <div className={o.detailActions}>{actions(selected, 'panel')}</div>
             </>
           ) : (
             <Empty>Pilih booking untuk melihat detail reservasi.</Empty>
@@ -776,26 +811,48 @@ export function CalendarView({
 }: {
   data: AppData;
   bookings: Entity[];
-  actions: (b: Entity) => ReactNode;
+  actions: (b: Entity, variant?: 'row' | 'panel') => ReactNode;
 }) {
   const [start, setStart] = useState(today()),
     [selected, setSelected] = useState<Entity | null>(null);
   const days = Array.from({ length: 7 }, (_, i) =>
     new Date(Date.parse(start + 'T12:00:00Z') + i * 86400000).toISOString().slice(0, 10),
   );
+  const hour = (t: string) => Number(t.slice(0, 2)) + Number(t.slice(3, 5)) / 60;
+  const firstHour = Math.min(7, ...data.barbers.map((b) => Math.floor(hour(b.start))));
+  const lastHour = Math.max(21, ...data.barbers.map((b) => Math.ceil(hour(b.end))));
+  const rows = lastHour - firstHour;
+  const perDay = days.map((day) =>
+    calendarLanes(bookings.filter((b) => b.date === day && !['cancelled', 'no_show'].includes(b.status))),
+  );
+  const columnWidths = perDay.map((items) => Math.max(130, ...items.map((p) => p.count * 72)));
+  const shiftWeek = (offset: number) =>
+    setStart(new Date(Date.parse(start + 'T12:00:00Z') + offset * 86400000).toISOString().slice(0, 10));
   return (
     <>
-      <div className="toolbar">
-        <label className="field">
-          <span>Mulai minggu</span>
+      <div className="toolbar calendar-toolbar">
+        <div className="calendar-nav">
+          <button onClick={() => shiftWeek(-7)} aria-label="Minggu sebelumnya">
+            ‹
+          </button>
+          <strong>
+            {shortDate(days[0], false)} – {shortDate(days[6], false)}
+          </strong>
+          <button onClick={() => shiftWeek(7)} aria-label="Minggu berikutnya">
+            ›
+          </button>
+        </div>
+        <div className="calendar-nav">
           <input
             aria-label="Mulai minggu"
             type="date"
             value={start}
             onChange={(e) => e.target.value && setStart(e.target.value)}
           />
-        </label>
-        <button onClick={() => setStart(today())}>Hari ini</button>
+          <button onClick={() => setStart(today())} disabled={start === today()}>
+            Hari ini
+          </button>
+        </div>
       </div>
       <div className={o.calendarLayout}>
         <section className={`${o.panel} ${o.calendarPanel}`}>
@@ -805,14 +862,22 @@ export function CalendarView({
             ))}
           </div>
           <div className="live-calendar-scroll">
-            <div className={o.calendarGrid}>
-              <div className={o.timeColumn}>
+            <div
+              className={o.calendarGrid}
+              style={{
+                height: 48 + rows * 48,
+                // Busy days get wider columns (about 72px per parallel booking) and the grid scrolls sideways.
+                gridTemplateColumns: `60px ${columnWidths.map((w) => `minmax(${w}px, 1fr)`).join(' ')}`,
+                minWidth: 60 + columnWidths.reduce((n, w) => n + w, 0),
+              }}
+            >
+              <div className={o.timeColumn} style={{ gridTemplateRows: `48px repeat(${rows}, 48px)` }}>
                 <b>Waktu</b>
-                {Array.from({ length: 14 }, (_, i) => (
-                  <span key={i}>{String(i + 7).padStart(2, '0')}:00</span>
+                {Array.from({ length: rows }, (_, i) => (
+                  <span key={i}>{String(i + firstHour).padStart(2, '0')}:00</span>
                 ))}
               </div>
-              {days.map((day) => (
+              {days.map((day, index) => (
                 <div key={day} className={o.dayColumn}>
                   <header className={day === today() ? o.todayHeader : ''}>
                     <b>{new Date(day + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short' })}</b>
@@ -823,23 +888,27 @@ export function CalendarView({
                       })}
                     </span>
                   </header>
-                  {bookings
-                    .filter((b) => b.date === day)
-                    .map((b) => (
-                      <button
-                        key={b.id}
-                        className={`${o.calendarEvent} ${b.status === 'completed' ? o.eventGray : b.status === 'confirmed' ? o.eventGreen : o.eventBlue}`}
-                        style={{
-                          top: 48 + (Number(b.time.slice(0, 2)) - 7 + Number(b.time.slice(3)) / 60) * 48,
-                          minHeight: Math.max(44, (b.duration / 60) * 48),
-                        }}
-                        onClick={() => setSelected(b)}
-                      >
-                        <small>{b.time}</small>
-                        <strong>{b.name}</strong>
-                        <span>{b.serviceName}</span>
-                      </button>
-                    ))}
+                  {perDay[index].map(({ b, lane, count }) => (
+                    <button
+                      key={b.id}
+                      className={`${o.calendarEvent} ${b.status === 'completed' ? o.eventGray : b.status === 'confirmed' ? o.eventGreen : o.eventBlue}`}
+                      aria-pressed={selected?.id === b.id}
+                      aria-label={`${b.time} ${b.name}, ${b.serviceName}`}
+                      style={{
+                        top: 48 + (hour(b.time) - firstHour) * 48,
+                        height: cardHeight(b.duration),
+                        minHeight: 0,
+                        left: `calc(${(lane / count) * 100}% + 3px)`,
+                        width: `calc(${100 / count}% - 6px)`,
+                        right: 'auto',
+                      }}
+                      onClick={() => setSelected(b)}
+                    >
+                      <small>{b.time}</small>
+                      <strong>{b.name}</strong>
+                      <span>{b.serviceName}</span>
+                    </button>
+                  ))}
                 </div>
               ))}
             </div>
@@ -859,10 +928,11 @@ export function CalendarView({
               <div className="panel-padding">
                 <Person name={selected.name} detail={selected.serviceName} />
                 <p>
-                  {selected.date} · {selected.time} WIB
+                  {shortDate(selected.date)} · {selected.time} WIB ·{' '}
+                  {data.barbers.find((v) => v.id === selected.barberId)?.name}
                 </p>
                 <Badge value={selected.status} />
-                {actions(selected)}
+                {actions(selected, 'panel')}
               </div>
             ) : (
               <div className="status-legend">
@@ -880,7 +950,7 @@ export function CalendarView({
                 .map((b) => (
                   <button className="mini-booking-row" key={b.id} onClick={() => setSelected(b)}>
                     <time>{b.time}</time>
-                    <Person name={b.name} detail={b.date} />
+                    <Person name={b.name} detail={dayLabel(b.date)} />
                   </button>
                 ))}
             </div>

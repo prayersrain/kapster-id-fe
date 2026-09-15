@@ -28,6 +28,7 @@ import {
   transaction,
   localMail,
   audit,
+  orgSlug,
 } from './database';
 import { parse, text, email, password, uuid } from './validation';
 import { AuthGuard, AuthRequest, safeUser } from './auth';
@@ -45,7 +46,15 @@ export class PublicController {
     const user = transaction(() => {
       const orgId = id(),
         userId = id();
-      run('INSERT INTO orgs VALUES(?,?,?,?,?)', orgId, data.business, 'draft', '', now());
+      run(
+        'INSERT INTO orgs(id,name,status,reason,created,slug) VALUES(?,?,?,?,?,?)',
+        orgId,
+        data.business,
+        'draft',
+        '',
+        now(),
+        orgSlug(data.business),
+      );
       run(
         'INSERT INTO users VALUES(?,?,?,?,?,?,?,?,?)',
         userId,
@@ -135,17 +144,29 @@ export class PublicController {
     res.clearCookie('kapster_session', { path: '/api', sameSite: 'strict' });
     return { ok: true };
   }
-  @Get('public/catalog') catalog() {
+  @Get('public/shops/:slug') shop(@Param('slug') slug: string) {
+    const org = /^[a-z0-9-]{1,60}$/.test(slug)
+      ? one("SELECT id,name,slug FROM orgs WHERE slug=? AND status='approved'", slug)
+      : undefined;
+    const outlets = org
+      ? all(
+          'SELECT id,name,address,slug FROM outlets WHERE orgId=? AND active=1 AND published=1 ORDER BY name',
+          org.id,
+        )
+      : [];
+    // Draft, suspended, and unpublished businesses share one response so the page reveals nothing.
+    if (!org || !outlets.length)
+      throw new NotFoundException('Halaman booking tidak ditemukan atau belum diterbitkan.');
+    const scope = `outletId IN (${outlets.map(() => '?').join(',')})`,
+      ids = outlets.map((o) => o.id);
     return {
-      outlets: all(
-        "SELECT o.id,o.name,o.address FROM outlets o JOIN orgs g ON g.id=o.orgId WHERE o.active=1 AND o.published=1 AND g.status='approved'",
-      ),
+      org: { name: org.name, slug: org.slug },
+      outlets,
       services: all(
-        "SELECT s.id,s.outletId,s.name,s.price,s.duration FROM services s JOIN outlets o ON o.id=s.outletId JOIN orgs g ON g.id=o.orgId WHERE s.active=1 AND o.active=1 AND o.published=1 AND g.status='approved'",
+        `SELECT id,outletId,name,price,duration FROM services WHERE active=1 AND ${scope} ORDER BY price`,
+        ...ids,
       ),
-      barbers: all(
-        "SELECT b.id,b.outletId,b.name FROM barbers b JOIN outlets o ON o.id=b.outletId JOIN orgs g ON g.id=o.orgId WHERE b.active=1 AND o.active=1 AND o.published=1 AND g.status='approved'",
-      ),
+      barbers: all(`SELECT id,outletId,name FROM barbers WHERE active=1 AND ${scope} ORDER BY name`, ...ids),
     };
   }
   @Get('public/slots') slots(@Query() query: unknown) {
@@ -161,7 +182,7 @@ export class PublicController {
   @Get('public/bookings/:token') booking(@Param('token') token: string) {
     if (!/^[a-f0-9]{64}$/.test(token)) throw new NotFoundException('Booking tidak ditemukan.');
     const booking = one(
-      'SELECT b.id,b.name,b.serviceName,b.price,b.date,b.time,b.status,b.paid,o.name AS outletName,o.address,r.name AS barberName,(SELECT status FROM refunds WHERE bookingId=b.id) AS refundStatus FROM bookings b JOIN outlets o ON o.id=b.outletId JOIN barbers r ON r.id=b.barberId WHERE b.token=?',
+      'SELECT b.id,b.name,b.serviceName,b.price,b.date,b.time,b.status,b.paid,o.name AS outletName,o.address,o.slug AS outletSlug,g.name AS orgName,g.slug AS orgSlug,r.name AS barberName,(SELECT status FROM refunds WHERE bookingId=b.id) AS refundStatus FROM bookings b JOIN outlets o ON o.id=b.outletId JOIN orgs g ON g.id=b.orgId JOIN barbers r ON r.id=b.barberId WHERE b.token=?',
       token,
     );
     if (!booking) throw new NotFoundException('Booking tidak ditemukan.');

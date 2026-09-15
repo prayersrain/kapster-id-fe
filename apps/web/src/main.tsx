@@ -2,13 +2,14 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, Link } from 'react-router-dom';
 import { AuthProvider, AuthPage, Protected, useAuth, homeFor } from './auth';
-import { Booking, BookingStatus } from './Booking';
+import { PublicBooking, BookingStatus } from './Booking';
 import { Workspace } from './Workspace';
 import './styles.css';
 import './restored.css';
+import './interactions.css';
 function Home() {
   const { user, loading } = useAuth();
-  return loading ? <p>Memuat…</p> : <Navigate to={user ? homeFor(user) : '/booking'} replace />;
+  return loading ? <p>Memuat…</p> : <Navigate to={user ? homeFor(user) : '/login'} replace />;
 }
 function OwnerAlias({ page }: { page: string }) {
   return (
@@ -28,8 +29,10 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/verify-email" element={<AuthPage key="verify" mode="verify" />} />
           <Route path="/forgot-password" element={<AuthPage key="forgot" mode="forgot" />} />
           <Route path="/reset-password" element={<AuthPage key="reset" mode="reset" />} />
-          <Route path="/booking" element={<Booking />} />
+          <Route path="/booking" element={<PublicBooking />} />
           <Route path="/booking/status/:token" element={<BookingStatus />} />
+          <Route path="/booking/:shop" element={<PublicBooking />} />
+          <Route path="/booking/:shop/:outlet" element={<PublicBooking />} />
           <Route
             path="/owner/*"
             element={

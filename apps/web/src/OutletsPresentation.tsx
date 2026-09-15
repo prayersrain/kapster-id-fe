@@ -1,19 +1,78 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AppData, Entity, rupiah } from './api';
-import { Badge, Empty, Table } from './ui';
+import { AppData, bookingLink, Entity, rupiah } from './api';
+import { Badge, dayNames, Empty, Table } from './ui';
 import { Metric, Person, Stats } from './WorkspacePresentation';
 import { Glyph } from './Glyph';
 import o from '../../../components/owner/OwnerDashboard.module.css';
 
+export function BookingLinkCard({
+  org,
+  outlets,
+  onEditSlug,
+}: {
+  org: Entity;
+  outlets: Entity[];
+  onEditSlug?: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const published = outlets.filter((v) => v.published);
+  const path = bookingLink(org.slug);
+  const url = `${window.location.origin}${path}`;
+  return (
+    <section className="booking-link-card" aria-label="Link booking publik">
+      <span className="booking-link-icon">
+        <Glyph name="store" />
+      </span>
+      <div className="booking-link-copy">
+        <strong>Link booking {org.name}</strong>
+        <code>{url}</code>
+        <small>
+          {published.length
+            ? `${published.length} outlet menerima booking online. Bagikan link ini di Instagram, WhatsApp, atau QR kasir.`
+            : 'Belum ada outlet yang diterbitkan. Link aktif setelah outlet diterbitkan dari tombol Edit.'}
+          {org.publishedAt && ' Link terkunci karena sudah pernah diterbitkan.'}
+        </small>
+      </div>
+      <div className="booking-link-actions">
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(url);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            } catch {
+              window.prompt('Salin link booking:', url);
+            }
+          }}
+        >
+          {copied ? 'Tersalin ✓' : 'Salin link'}
+        </button>
+        {published.length > 0 && (
+          <a className="primary" href={path} target="_blank" rel="noreferrer">
+            Buka halaman
+          </a>
+        )}
+        {onEditSlug && !org.publishedAt && (
+          <button type="button" onClick={onEditSlug}>
+            Ubah link
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
 export function OutletsPresentation({
   data,
   add,
   edit,
+  editSlug,
 }: {
   data: AppData;
   add: () => void;
   edit: (outlet: Entity) => void;
+  editSlug: () => void;
 }) {
   const [selectedId, setSelected] = useState(''),
     [search, setSearch] = useState(''),
@@ -36,6 +95,7 @@ export function OutletsPresentation({
           ['Total Penerimaan', rupiah(data.payments.reduce((n, v) => n + v.amount, 0))],
         ]}
       />
+      <BookingLinkCard org={data.org} outlets={data.outlets} onEditSlug={editSlug} />
       <div className="outlet-page-actions">
         <button className="primary" onClick={add}>
           ＋ Tambah outlet
@@ -89,7 +149,7 @@ export function OutletsPresentation({
                     {selected.published ? 'Halaman booking publik aktif' : 'Booking belum diterbitkan'}
                   </span>
                 </div>
-                <button onClick={() => edit(selected)}>Edit</button>
+                <button onClick={() => edit(selected)}>Edit outlet</button>
               </div>
               <div className={o.outletMetrics}>
                 <Metric label="Total Booking" value={bookings.length} icon="calendar" />
@@ -194,14 +254,7 @@ export function OutletsPresentation({
                     headers={['Kapster', 'Mulai', 'Selesai', 'Hari Kerja']}
                     rows={data.barbers
                       .filter((v) => v.outletId === selected.id)
-                      .map((v) => [
-                        v.name,
-                        v.start,
-                        v.end,
-                        (JSON.parse(v.days) as number[])
-                          .map((i) => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][i])
-                          .join(', '),
-                      ])}
+                      .map((v) => [v.name, v.start, v.end, dayNames(JSON.parse(v.days))])}
                   />
                   <Link className="text-link" to="/owner/barbers">
                     Kelola Jadwal →
@@ -230,9 +283,14 @@ export function OutletsPresentation({
                       : 'Terbitkan booking melalui pengaturan outlet setelah bisnis disetujui.'}
                   </p>
                   {!!selected.published && (
-                    <Link className="primary" to="/booking">
-                      Buka booking →
-                    </Link>
+                    <a
+                      className="primary"
+                      href={bookingLink(data.org.slug, selected.slug)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Buka booking outlet →
+                    </a>
                   )}
                   <h3>Layanan Outlet</h3>
                   <Table

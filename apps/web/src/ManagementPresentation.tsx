@@ -1,12 +1,13 @@
 import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AppData, Entity, rupiah, User } from './api';
-import { Badge, Card, Empty, Table } from './ui';
+import { AppData, bookingLink, Entity, rupiah, shortDate, User } from './api';
+import { Badge, Card, Empty, Table, WEEKDAYS } from './ui';
 import { Activity, Distribution, Metric, Person, RevenueChart, Stats } from './WorkspacePresentation';
 import { Glyph } from './Glyph';
 import o from '../../../components/owner/OwnerDashboard.module.css';
 import c from '../../../components/cashier/CashierDashboard.module.css';
 import { CashierSettings, CashierCustomers } from './CashierPresentation';
+import { BookingLinkCard } from './OutletsPresentation';
 
 export function ManagementView({
   data,
@@ -159,6 +160,7 @@ export function ManagementView({
     return (
       <div className={`${o.settingsLayout} settings-live`}>
         <div>
+          {owner && <BookingLinkCard org={data.org} outlets={data.outlets} />}
           <nav className={o.settingsTabs} aria-label="Pengaturan bisnis">
             {[
               ['Akun & Akses', 'settings', 'lock'],
@@ -307,9 +309,14 @@ export function ManagementView({
               </div>
             </dl>
             {!!selected.published && (
-              <Link className="primary" to="/booking">
+              <a
+                className="primary"
+                href={bookingLink(data.org.slug, selected.slug)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Lihat Halaman Booking →
-              </Link>
+              </a>
             )}
           </div>
         </>
@@ -326,7 +333,7 @@ export function ManagementView({
               {selected.start}–{selected.end} WIB
             </p>
             <div className="week-days">
-              {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day, i) => (
+              {WEEKDAYS.map((day, i) => (
                 <span
                   key={day}
                   className={
@@ -351,7 +358,7 @@ export function ManagementView({
               .map((v) => (
                 <div className="mini-booking-row" key={v.id}>
                   <time>{v.time}</time>
-                  <Person name={v.name} detail={v.date} />
+                  <Person name={v.name} detail={shortDate(v.date)} />
                 </div>
               ))}
           </div>
@@ -395,7 +402,7 @@ export function ManagementView({
               <div className="customer-visit" key={v.id}>
                 <strong>{v.serviceName}</strong>
                 <small>
-                  {v.date} · {v.time}
+                  {shortDate(v.date)} · {v.time}
                 </small>
                 <Badge value={v.status} />
               </div>

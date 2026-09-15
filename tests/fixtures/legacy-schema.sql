@@ -1,0 +1,23 @@
+-- Schema as committed in b56119e, before booking slugs and publish history. Used by tests/migration.test.mjs.
+CREATE TABLE IF NOT EXISTS orgs (id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', reason TEXT NOT NULL DEFAULT '', created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS outlets (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), name TEXT NOT NULL, address TEXT NOT NULL, published INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, orgId TEXT REFERENCES orgs(id), outletId TEXT REFERENCES outlets(id), name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('owner','cashier','admin')), verified INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS tokens (token TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), kind TEXT NOT NULL, expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS services (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), name TEXT NOT NULL, price INTEGER NOT NULL CHECK(price >= 0), duration INTEGER NOT NULL CHECK(duration > 0), active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS barbers (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), name TEXT NOT NULL, start TEXT NOT NULL DEFAULT '09:00', end TEXT NOT NULL DEFAULT '18:00', days TEXT NOT NULL DEFAULT '[1,2,3,4,5,6]', active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS blocks (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), barberId TEXT NOT NULL REFERENCES barbers(id), date TEXT NOT NULL, reason TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS bookings (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), serviceId TEXT NOT NULL REFERENCES services(id), barberId TEXT NOT NULL REFERENCES barbers(id), name TEXT NOT NULL, phone TEXT NOT NULL, serviceName TEXT NOT NULL, price INTEGER NOT NULL, duration INTEGER NOT NULL, date TEXT NOT NULL, time TEXT NOT NULL, starts INTEGER NOT NULL, ends INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'confirmed', paid INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL, token TEXT NOT NULL UNIQUE, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS booking_overlap ON bookings(barberId, starts, ends, status);
+CREATE TRIGGER IF NOT EXISTS booking_insert_overlap BEFORE INSERT ON bookings
+WHEN NEW.status NOT IN ('cancelled','no_show') AND EXISTS(SELECT 1 FROM bookings WHERE barberId=NEW.barberId AND status NOT IN ('cancelled','no_show') AND starts < NEW.ends AND ends > NEW.starts)
+BEGIN SELECT RAISE(ABORT, 'SLOT_CONFLICT'); END;
+CREATE TRIGGER IF NOT EXISTS booking_update_overlap BEFORE UPDATE OF starts, ends, barberId, status ON bookings
+WHEN NEW.status NOT IN ('cancelled','no_show') AND EXISTS(SELECT 1 FROM bookings WHERE id!=NEW.id AND barberId=NEW.barberId AND status NOT IN ('cancelled','no_show') AND starts < NEW.ends AND ends > NEW.starts)
+BEGIN SELECT RAISE(ABORT, 'SLOT_CONFLICT'); END;
+CREATE TABLE IF NOT EXISTS shifts (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), userId TEXT NOT NULL REFERENCES users(id), opening INTEGER NOT NULL, opened TEXT NOT NULL, closed TEXT, counted INTEGER, expected INTEGER, reason TEXT NOT NULL DEFAULT '');
+CREATE UNIQUE INDEX IF NOT EXISTS one_open_shift ON shifts(userId) WHERE closed IS NULL;
+CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), bookingId TEXT NOT NULL UNIQUE REFERENCES bookings(id), shiftId TEXT NOT NULL REFERENCES shifts(id), amount INTEGER NOT NULL, tendered INTEGER NOT NULL, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS refunds (id TEXT PRIMARY KEY, orgId TEXT NOT NULL REFERENCES orgs(id), outletId TEXT NOT NULL REFERENCES outlets(id), bookingId TEXT NOT NULL UNIQUE REFERENCES bookings(id), reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', requestedBy TEXT NOT NULL REFERENCES users(id), decidedBy TEXT REFERENCES users(id), decisionReason TEXT, cashShiftId TEXT REFERENCES shifts(id), created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, orgId TEXT, actor TEXT NOT NULL, action TEXT NOT NULL, entityId TEXT NOT NULL, reason TEXT NOT NULL, created TEXT NOT NULL);
+ALTER TABLE refunds ADD COLUMN paidAt TEXT;

@@ -12,7 +12,7 @@
     "build:web": "tsc -p apps/web/tsconfig.json && vite build --config apps/web/vite.config.ts",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "next typegen && tsc --noEmit && tsc -p apps/web/tsconfig.json && tsc -p apps/api/tsconfig.json --noEmit",
-    "test": "npm run build:api && node --test tests/api.test.mjs",
+    "test": "npm run build:api && node --test tests/api.test.mjs tests/web.test.mjs tests/migration.test.mjs",
     "test:browser": "npm run build:api && playwright test",
     "local:accounts": "node scripts/local-info.mjs accounts",
     "local:mail": "node scripts/local-info.mjs mail"
