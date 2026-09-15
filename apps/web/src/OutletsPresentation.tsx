@@ -47,7 +47,7 @@ export function BookingLinkCard({
             }
           }}
         >
-          {copied ? 'Tersalin ✓' : 'Salin link'}
+          {copied ? 'Tersalin' : 'Salin link'}
         </button>
         {published.length > 0 && (
           <a className="primary" href={path} target="_blank" rel="noreferrer">
@@ -189,16 +189,12 @@ export function OutletsPresentation({
                     </div>
                   </div>
                   <div className={o.shiftMetrics}>
-                    <article>
-                      <span className={`${o.bigRoundIcon} ${o.toneGreen}`}>
-                        <Glyph name="customer" />
-                      </span>
-                      <div>
-                        <small>Shift Aktif</small>
-                        <strong>{active.length} kasir</strong>
-                        <Badge value={active.length ? 'Berlangsung' : 'Belum dibuka'} />
-                      </div>
-                    </article>
+                    <Metric
+                      label="Shift Aktif"
+                      value={active.length}
+                      icon="users"
+                      note={active.length ? 'Sedang berlangsung' : 'Belum dibuka'}
+                    />
                     <Metric
                       label="Kas Awal"
                       value={rupiah(active.reduce((n, v) => n + v.opening, 0))}

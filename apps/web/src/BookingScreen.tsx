@@ -5,6 +5,7 @@ import { parseBookingLink } from './links';
 import { Badge, Empty, Form } from './ui';
 import { Logo } from '../../../components/ui/Logo';
 import { Glyph } from './Glyph';
+import { BookingDates } from './BookingDates';
 import s from '../../../components/booking/BookingExperience.module.css';
 
 const initials = (name = '') =>
@@ -126,10 +127,6 @@ export function BookingScreen(p: Props) {
     '',
     'Konfirmasi booking · Bayar di outlet',
   ];
-  const dates = Array.from(
-    { length: 7 },
-    (_, i) => new Date(`${today()}T12:00:00+07:00`).getTime() + i * 86400000,
-  ).map((t) => new Date(t + 7 * 3600000).toISOString().slice(0, 10));
   return (
     <BookingFrame
       internal={p.internal}
@@ -138,7 +135,9 @@ export function BookingScreen(p: Props) {
     >
       {p.result ? (
         <div className={s.successContent}>
-          <div className={s.successIcon}>✓</div>
+          <div className={s.successIcon}>
+            <Glyph name="receipt" size={30} />
+          </div>
           <h1>Booking tersimpan</h1>
           <p>
             Booking {p.customer.name} · {shortDate(p.date)} {p.time} WIB sudah masuk ke antrean outlet.
@@ -207,8 +206,12 @@ export function BookingScreen(p: Props) {
                     </span>
                   </div>
                   <div className={s.factList}>
-                    <span>✓ Tanpa akun</span>
-                    <span>◷ Jadwal real-time</span>
+                    <span>
+                      <Glyph name="customer" size={12} /> Tanpa akun
+                    </span>
+                    <span>
+                      <Glyph name="clock" size={12} /> Jadwal real-time
+                    </span>
                     <span>Bayar di outlet</span>
                   </div>
                 </article>
@@ -277,9 +280,12 @@ export function BookingScreen(p: Props) {
                           )}
                         </span>
                         {p.step === 1 ? (
-                          <span className={s.servicePrice}>{rupiah(item.price)}</span>
+                          <span className="service-choice-end">
+                            <span className={s.servicePrice}>{rupiah(item.price)}</span>
+                            <span className="selection-marker" aria-hidden="true" />
+                          </span>
                         ) : (
-                          <span className={s.optionChevron}>{selectedId === item.id ? '✓' : '›'}</span>
+                          <span className="selection-marker" aria-hidden="true" />
                         )}
                       </button>
                     ))}
@@ -287,34 +293,7 @@ export function BookingScreen(p: Props) {
                 )}
                 {p.step === 3 && (
                   <>
-                    <div className={s.dateStrip}>
-                      {dates.map((d) => (
-                        <button
-                          className={`${s.dateCard} ${p.date === d ? s.selectedDate : ''}`}
-                          aria-pressed={p.date === d}
-                          onClick={() => p.onDate(d)}
-                          key={d}
-                        >
-                          <small>
-                            {new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short' })}
-                          </small>
-                          <strong>{Number(d.slice(-2))}</strong>
-                          <small>
-                            {new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { month: 'short' })}
-                          </small>
-                        </button>
-                      ))}
-                    </div>
-                    <label className={s.field}>
-                      <span>Tanggal kunjungan (WIB)</span>
-                      <input
-                        type="date"
-                        value={p.date}
-                        min={today()}
-                        max={p.maxDate}
-                        onChange={(e) => p.onDate(e.target.value)}
-                      />
-                    </label>
+                    <BookingDates value={p.date} max={p.maxDate} onChange={p.onDate} />
                     {p.loading ? (
                       <p role="status">Memeriksa jadwal…</p>
                     ) : !p.slots.length ? (
@@ -460,7 +439,9 @@ export function BookingTicket({ data, error }: { data: Entity | null; error: str
             <p role="status">Memuat booking…</p>
           ) : (
             <>
-              <div className={s.successIcon}>✓</div>
+              <div className={s.successIcon}>
+                <Glyph name="receipt" size={30} />
+              </div>
               <span className={s.bookingCode}>#{data.id.slice(0, 8).toUpperCase()}</span>
               <h1>Jadwal Anda sudah tercatat.</h1>
               <p>Simpan tautan pribadi ini untuk melihat status booking Anda.</p>

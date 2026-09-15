@@ -37,7 +37,7 @@ export const visualMenus = {
     ['', 'Overview', 'home'],
     ['tenants', 'Tenants', 'store'],
     ['tenant-detail', 'Tenant Detail', 'customer'],
-    ['onboarding', 'Onboarding', 'check'],
+    ['onboarding', 'Onboarding', 'briefcase'],
     ['subscription', 'Subscription', 'card'],
     ['operations', 'Operations', 'briefcase'],
     ['support', 'Support', 'phone'],
@@ -84,7 +84,6 @@ export function Metric({
   label,
   value,
   icon = 'chart',
-  tone = 'Gold',
   note,
 }: {
   label: string;
@@ -94,14 +93,20 @@ export function Metric({
   note?: string;
 }) {
   return (
-    <article className={o.metricCard}>
-      <span className={`${o.metricIcon} ${o['tone' + tone]}`}>
-        <Glyph name={icon} size={22} />
-      </span>
-      <div>
-        <span className={o.metricLabel}>{label}</span>
-        <strong className={String(value).length > 11 ? o.metricValueCompact : ''}>{value}</strong>
+    <article className="summary-card">
+      <div className="summary-card-head">
+        <span className="summary-label">{label}</span>
+        <span className="summary-icon">
+          <Glyph name={icon === 'check' ? 'receipt' : icon} size={17} />
+        </span>
+      </div>
+      <strong className={`summary-value ${String(value).length > 12 ? 'summary-value-long' : ''}`}>
+        {value}
+      </strong>
+      <div className="summary-note">
+        <span className="summary-dot" aria-hidden="true" />
         {note && <small className="metric-note">{note}</small>}
+        {!note && <small>{String(value).startsWith('Rp') ? 'Total tercatat' : 'Data operasional'}</small>}
       </div>
     </article>
   );
@@ -114,7 +119,21 @@ export function Stats({ items }: { items: [string, ReactNode][] }) {
           key={label}
           label={label}
           value={value}
-          icon={(['coin', 'calendar', 'users', 'check'] as const)[i % 4]}
+          icon={
+            /refund/i.test(label)
+              ? 'refresh'
+              : /customer|pelanggan|owner|kapster|kasir/i.test(label)
+                ? 'users'
+                : /transaksi/i.test(label)
+                  ? 'receipt'
+                  : /selesai|layanan/i.test(label)
+                    ? 'scissors'
+                    : /outlet|tenant/i.test(label)
+                      ? 'store'
+                      : /Rp/.test(String(value))
+                        ? 'wallet'
+                        : 'calendar'
+          }
           tone={['Gold', 'Blue', 'Green', 'Purple'][i % 4]}
         />
       ))}
@@ -212,7 +231,7 @@ export function WorkspaceShell({
               </div>
             </article>
             <button className={o.helpCard} onClick={() => go('onboarding')}>
-              <Glyph name="check" />
+              <Glyph name="briefcase" />
               <span>
                 <strong>Setup Bisnis</strong>
                 <small>Kelola kesiapan operasional</small>
@@ -394,7 +413,7 @@ export function RevenueChart({
   const counts = days.map((d) => bookings.filter((b) => b.date === d).length);
   const max = Math.max(...revenue, 1),
     maxCount = Math.max(...counts, 1);
-  const points = counts.map((n, i) => `${i * 61 + 20},${112 - (n / maxCount) * 92}`).join(' ');
+  const points = counts.map((n, i) => `${i * 100 + 50},${110 - (n / maxCount) * 90}`).join(' ');
   return (
     <section className={`${o.panel} ${o.chartPanel}`}>
       <div className={o.panelHeader}>
@@ -411,34 +430,58 @@ export function RevenueChart({
           Jumlah Booking
         </span>
       </div>
-      <div className={o.chartArea}>
-        <div className={o.yLabels}>
-          {[1, 0.75, 0.5, 0.25, 0].map((n) => (
+      <div className="revenue-chart-area">
+        <div className="revenue-axis">
+          <small>Rp</small>
+          {[1, 0.5, 0].map((n) => (
             <span key={n}>{Math.round(max * n).toLocaleString('id-ID')}</span>
           ))}
         </div>
-        <div className={o.chartCanvas}>
-          {revenue.map((n, i) => (
-            <i key={i} style={{ height: `${(n / max) * 90}%` }} title={`${days[i]}: ${rupiah(n)}`} />
-          ))}
+        <div className="revenue-plot">
           <svg
-            viewBox="0 0 410 120"
+            viewBox="0 0 700 120"
             preserveAspectRatio="none"
             role="img"
-            aria-label={`Jumlah booking tujuh hari terakhir: ${counts.join(', ')}`}
+            aria-label={`Pendapatan dan booking tujuh hari terakhir. ${days.map((d, i) => `${d}: ${rupiah(revenue[i])}, ${counts[i]} booking`).join('; ')}`}
           >
-            <polyline points={points} />
+            {[20, 65, 110].map((y) => (
+              <line key={y} x1="0" x2="700" y1={y} y2={y} className="revenue-grid" />
+            ))}
+            {revenue.map((n, i) => (
+              <rect
+                key={i}
+                x={i * 100 + 30}
+                y={110 - (n / max) * 90}
+                width="40"
+                height={(n / max) * 90}
+                rx="4"
+                className="revenue-bar"
+              >
+                <title>
+                  {days[i]}: {rupiah(n)}
+                </title>
+              </rect>
+            ))}
+            <polyline points={points} className="revenue-line" />
             {counts.map((n, i) => (
-              <circle key={i} cx={i * 61 + 20} cy={112 - (n / maxCount) * 92} r="3" />
+              <path
+                key={i}
+                d={`M${i * 100 + 50} ${110 - (n / maxCount) * 90}h0.01`}
+                className="revenue-point"
+              />
             ))}
           </svg>
-          <div className={o.xLabels}>
+          <div className="revenue-dates">
             {days.map((d) => (
-              <span key={d}>
-                {new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-              </span>
+              <span key={d}>{shortDate(d, false)}</span>
             ))}
           </div>
+        </div>
+        <div className="revenue-axis revenue-count-axis">
+          <small>Booking</small>
+          {[1, 0.5, 0].map((n) => (
+            <span key={n}>{(maxCount * n).toLocaleString('id-ID')}</span>
+          ))}
         </div>
       </div>
     </section>
@@ -452,30 +495,36 @@ export function Distribution({
   label?: string;
 }) {
   const total = items.reduce((n, v) => n + v.value, 0),
-    colors = ['#2594eb', '#a87932', '#20b981', '#9774c4', '#b2bbc6'];
+    colors = ['#ab7d3c', '#e5d4b4', '#647361', '#9b887b', '#89949e'];
   let running = 0;
   const gradient = items
-    .filter((v) => v.value > 0)
     .map((v, i) => {
       const start = running;
-      running += (v.value / total) * 100;
+      running += total ? (v.value / total) * 100 : 0;
       return `${colors[i % 5]} ${start}% ${running}%`;
     })
     .join(',');
   return (
-    <div className={o.donutRow}>
-      <div className={o.donut} style={{ background: total ? `conic-gradient(${gradient})` : '#edf0f2' }}>
+    <div className="distribution">
+      <div
+        className="distribution-ring"
+        role="img"
+        aria-label={`${label}: ${total}. ${items.map((v) => `${v.name}: ${v.value}`).join(', ')}`}
+        style={{ background: total ? `conic-gradient(${gradient})` : '#eeece6' }}
+      >
         <div>
           <strong>{total}</strong>
           <span>{label}</span>
         </div>
       </div>
-      <div className={o.legendList}>
+      <div className="distribution-legend">
         {items.map((v, i) => (
           <span key={v.name}>
             <i style={{ background: colors[i % 5] }} />
-            {v.name}
-            <b>{v.value}</b>
+            <span>{v.name}</span>
+            <b>
+              {v.value} <small>· {total ? Math.round((v.value / total) * 100) : 0}%</small>
+            </b>
           </span>
         ))}
       </div>
@@ -831,18 +880,20 @@ export function CalendarView({
   return (
     <>
       <div className="toolbar calendar-toolbar">
-        <div className="calendar-nav">
+        <div className="calendar-nav calendar-week-switch">
           <button onClick={() => shiftWeek(-7)} aria-label="Minggu sebelumnya">
-            ‹
+            <span className="previous-chevron">
+              <Glyph name="chevron" size={18} />
+            </span>
           </button>
           <strong>
             {shortDate(days[0], false)} – {shortDate(days[6], false)}
           </strong>
           <button onClick={() => shiftWeek(7)} aria-label="Minggu berikutnya">
-            ›
+            <Glyph name="chevron" size={18} />
           </button>
         </div>
-        <div className="calendar-nav">
+        <div className="calendar-nav calendar-date-actions">
           <input
             aria-label="Mulai minggu"
             type="date"
@@ -1075,7 +1126,7 @@ export function SetupPage({
         <div className={f.stepList}>
           {checks.map((v, i) => (
             <Link className={`${f.step} ${v.done ? f.stepDone : ''}`} key={v.name} to={`/owner/${v.route}`}>
-              <span className={f.stepIcon}>{v.done ? '✓' : i + 1}</span>
+              <span className={f.stepIcon}>{i + 1}</span>
               <span>
                 <strong>{v.name}</strong>
                 <small>{v.detail}</small>

@@ -45,7 +45,18 @@ test('public booking feeds cashier, cash payment and close shift persist on refr
   await capture('kapster');
   await page.getByRole('button', { name: 'Pilih Jadwal', exact: false }).click();
   const tomorrow = new Date(Date.now() + 86400000 + 7 * 3600000).toISOString().slice(0, 10);
-  await page.getByLabel('Tanggal kunjungan (WIB)').fill(tomorrow);
+  await expect(page.locator('.booking-dates input[type="date"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Tujuh hari berikutnya', exact: true }).click();
+  const nextWeek = new Date(Date.now() + 7 * 86400000 + 7 * 3600000).toISOString().slice(0, 10);
+  await expect(page.getByRole('button', { name: new RegExp(`^Tanggal ${nextWeek}:`) })).toBeVisible();
+  for (let week = 0; week < 3; week++)
+    await page.getByRole('button', { name: 'Tujuh hari berikutnya', exact: true }).click();
+  const lastDay = new Date(Date.now() + 30 * 86400000 + 7 * 3600000).toISOString().slice(0, 10);
+  await expect(page.getByRole('button', { name: new RegExp(`^Tanggal ${lastDay}:`) })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tujuh hari berikutnya', exact: true })).toBeDisabled();
+  for (let week = 0; week < 4; week++)
+    await page.getByRole('button', { name: 'Tujuh hari sebelumnya', exact: true }).click();
+  await page.getByRole('button', { name: new RegExp(`^Tanggal ${tomorrow}:`) }).click();
   await expect(page.locator('[class*=timeGrid] button').first()).toBeVisible();
   await page.locator('[class*=timeGrid] button').first().click();
   await capture('jadwal');

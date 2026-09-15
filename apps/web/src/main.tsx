@@ -7,6 +7,7 @@ import { Workspace } from './Workspace';
 import './styles.css';
 import './restored.css';
 import './interactions.css';
+import './polish.css';
 function Home() {
   const { user, loading } = useAuth();
   return loading ? <p>Memuat…</p> : <Navigate to={user ? homeFor(user) : '/login'} replace />;

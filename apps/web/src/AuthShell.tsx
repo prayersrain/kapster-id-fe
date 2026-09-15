@@ -31,7 +31,7 @@ export function AuthShell({
               'Keputusan bisnis berdasarkan data',
             ].map((v) => (
               <li key={v}>
-                <span>✓</span>
+                <span aria-hidden="true">•</span>
                 {v}
               </li>
             ))}
