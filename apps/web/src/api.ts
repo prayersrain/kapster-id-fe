@@ -7,7 +7,12 @@ export type User = {
   orgId: string | null;
   outletId: string | null;
 };
-export type Catalog = { outlets: Entity[]; services: Entity[]; barbers: Entity[] };
+export type Catalog = {
+  outlets: Entity[];
+  services: Entity[];
+  barbers: Entity[];
+  org?: { name: string; slug: string };
+};
 export type AppData = Catalog & {
   org: Entity;
   bookings: Entity[];
@@ -53,6 +58,21 @@ export const rupiah = (value: number) =>
     value,
   );
 export const today = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+/** "Sel, 15 Sep" for a WIB calendar date (YYYY-MM-DD). */
+export const shortDate = (date: string, withWeekday = true) =>
+  new Date(`${date}T12:00:00+07:00`).toLocaleDateString('id-ID', {
+    weekday: withWeekday ? 'short' : undefined,
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Asia/Jakarta',
+  });
+export const dayLabel = (date: string) => {
+  const offset = Math.round(
+    (Date.parse(`${date}T12:00:00Z`) - Date.parse(`${today()}T12:00:00Z`)) / 86400_000,
+  );
+  return offset === 0 ? 'Hari ini' : offset === 1 ? 'Besok' : offset === -1 ? 'Kemarin' : shortDate(date);
+};
+export { bookingLink } from './links';
 export const labels: Record<string, string> = {
   draft: 'Draft',
   pending: 'Menunggu review',

@@ -14,12 +14,14 @@ Satu perintah membangun API lalu menjalankan tiga proses di loopback:
 | URL | Aplikasi | Akses |
 | --- | --- | --- |
 | http://127.0.0.1:3000 | Next.js landing page | Publik |
-| http://127.0.0.1:5173/booking | React + Vite booking customer | Publik |
+| http://127.0.0.1:5173/booking/garasi-barber | React + Vite booking customer per barbershop | Publik |
 | http://127.0.0.1:5173/login | React + Vite login | Publik |
 | http://127.0.0.1:5173/owner | Owner | Session Owner |
 | http://127.0.0.1:5173/kasir | Kasir | Session Kasir |
 | http://127.0.0.1:5173/admin | Admin platform | Session Admin |
 | http://127.0.0.1:4000/api/health | NestJS API lokal | Health saja; endpoint bisnis memerlukan session |
+
+Setiap bisnis punya link booking sendiri: `/booking/{slug-bisnis}` (pilih outlet; langsung terpilih jika hanya satu outlet) dan `/booking/{slug-bisnis}/{slug-outlet}`. `/booking` tanpa slug hanya menampilkan kolom untuk membuka link, bukan daftar semua barbershop. Slug dibuat otomatis dari nama bisnis/outlet dan tampil di kartu **Link booking** pada menu Outlet. Rencana produksi memakai subdomain `booking.kapster.id/{slug-bisnis}`.
 
 Gunakan hostname **127.0.0.1 secara konsisten**. Cookie tidak dibagikan antara `localhost` dan `127.0.0.1`. Rute aplikasi lama pada port 3000 diarahkan ke Vite; Next.js hanya merender landing page.
 
@@ -45,13 +47,13 @@ Salin tautan terbaru untuk email tujuan yang benar ke browser. Token sekali paka
 
 ## Skenario uji pengguna
 
-1. Buka booking tanpa login. Pilih outlet, layanan, kapster, tanggal, jam, dan isi customer. Konfirmasi menyimpan booking dengan **belum dibayar**, lalu menampilkan tautan status pribadi. Tidak ada klaim WhatsApp terkirim atau pembayaran online berhasil.
+1. Buka link booking bisnis tanpa login, misalnya `/booking/garasi-barber`. Pilih outlet, layanan, kapster, tanggal, jam, dan isi customer. Konfirmasi menyimpan booking dengan **belum dibayar**, lalu menampilkan tautan status pribadi. Tidak ada klaim WhatsApp terkirim atau pembayaran online berhasil.
 2. Login Kasir. Buka shift dengan modal awal, buka antrean, check-in customer, mulai layanan, catat uang tunai diterima, lalu tandai selesai. Booking yang belum dibayar tidak dapat diselesaikan.
 3. Jika perlu koreksi pembayaran, ajukan refund penuh. Login Owner pada browser/session lain untuk menyetujui atau menolak. Kasir mencatat pengembalian tunai hanya setelah uang diserahkan; dana mengurangi shift yang membayarkan refund.
 4. Tutup shift dengan uang fisik terhitung. Selisih harus disertai alasan. Logout ditolak selama operator memiliki shift aktif. Owner dapat force-close dengan alasan.
 5. Login Owner. Cek transaksi, laporan per outlet dan konsolidasi, serta ekspor CSV. Refresh browser dan restart API; data tetap ada.
 6. Daftar Owner baru, verifikasi melalui email lokal, buat outlet, layanan, kapster dan hari kerja. Undang Kasir jika diperlukan, lalu ajukan approval.
-7. Login Admin, periksa detail setup, setujui atau minta revisi dengan alasan. Owner menerbitkan booking melalui menu Outlet. Bisnis yang ditangguhkan tidak muncul di booking publik; data transaksi tetap tersimpan.
+7. Login Admin, periksa detail setup, setujui atau minta revisi dengan alasan. Owner menerbitkan booking melalui Edit outlet → Terima booking online, lalu membagikan link dari kartu Link booking. Link bisnis hanya bisa diubah sebelum outlet pertama diterbitkan; setelah itu terkunci permanen walau publikasi dimatikan. Bisnis yang ditangguhkan tidak muncul di booking publik; data transaksi tetap tersimpan.
 8. Coba jadwal bertumpang tindih, pergantian kapster, blok cuti, dan reschedule. Blok cuti tidak otomatis menghapus booking: daftar jumlah booking terdampak ditampilkan untuk ditangani operator.
 
 Untuk dua role sekaligus, gunakan browser atau profil terpisah karena satu browser memakai satu cookie session.
@@ -64,6 +66,8 @@ Untuk dua role sekaligus, gunakan browser atau profil terpisah karena satu brows
 - `.local/kapster.sqlite`: database SQLite file; `.local/mail.jsonl`: email pengembangan. Keduanya diabaikan Git dan tidak dilayani aplikasi.
 - `docs/design/MockupUI/`: PRD dan referensi desain yang sebelumnya berada di `public`.
 - `prototypes/next-routes/` dan komponen dashboard lama: referensi implementasi awal, tidak dirutekan pada aplikasi aktif. Smoke test UI lama hanya berlaku untuk prototype sebelum migrasi.
+
+Layout dashboard diuji pada desktop, tablet landscape (1024–1279px memakai sidebar ikon; tombol menu membuka sidebar penuh), tablet portrait (≤900px memakai drawer), dan ponsel. Detail booking Owner tampil sebagai panel geser di bawah 1280px. Dialog aksi selalu menampilkan ringkasan data, keterangan, tombol Batal, dan notifikasi hasil; jadwal kapster memakai pilihan hari dan jam, reschedule memakai jam kosong dari server.
 
 Tampilan memakai data API: angka, jumlah baris, status, dan keadaan kosong dapat berbeda dari contoh di `main`. Grafik menghitung data tersimpan; fitur eksternal yang belum terintegrasi tetap ditandai belum aktif. Halaman Owner memuat kalender mingguan, detail booking, pengelolaan outlet, layanan, tim, kas, dan laporan. Kasir mempertahankan tampilan hitam/emas di `main`, termasuk antrean, detail customer, shift, dan pengaturan. Panel detail tenant Admin tersedia dari menu Tenant Detail atau tautan Profil Lengkap.
 
@@ -82,6 +86,7 @@ Keputusan kerja **khusus versi lokal**, tidak mengganti `[KUNCI]`/`[USUL-v2]` PR
 | Organisasi | Banyak outlet per bisnis; satu penugasan outlet per Kasir dan Kapster; Owner mengakses seluruh outlet organisasinya |
 | Jadwal | WIB, hari kerja per kapster, buffer 10 menit, booking publik minimal 60 menit ke depan, horizon 30 hari |
 | Approval | Admin meninjau setup; outlet harus diterbitkan Owner setelah disetujui |
+| Link booking | Path `/booking/{slug-bisnis}[/{slug-outlet}]` (struktur PRD §9.4 masih `[USUL-v2]`); slug bisnis unik global dan terkunci permanen setelah pertama kali terbit. Belum ada pengalihan link lama maupun proses ubah link oleh Admin. Subdomain produksi belum dikonfigurasi |
 | Subscription | Tidak ditagihkan dan tidak menjadi hambatan uji lokal |
 | Refund | Refund penuh tunai: pengajuan → keputusan Owner → pencatatan kas keluar; tidak memanggil provider |
 

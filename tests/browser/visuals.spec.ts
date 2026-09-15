@@ -49,6 +49,9 @@ test('all restored screens render on desktop and phone without page overflow', a
     const base = role === 'cashier' ? '/kasir' : '/' + role;
     for (const size of [
       { width: 1536, height: 1024 },
+      { width: 1180, height: 820 },
+      { width: 1024, height: 768 },
+      { width: 768, height: 1024 },
       { width: 390, height: 850 },
     ]) {
       await page.setViewportSize(size);
@@ -62,6 +65,14 @@ test('all restored screens render on desktop and phone without page overflow', a
           expect(
             await page.locator('.live-workspace').evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
           ).toBe(true);
+          if (size.width > 900 && size.width < 1280) {
+            // Landscape tablets use the icon rail; it must never cover page content.
+            const [railRight, contentLeft] = await page.evaluate(() => [
+              document.querySelector('.restored-workspace > aside')!.getBoundingClientRect().right,
+              document.querySelector('.live-workspace')!.getBoundingClientRect().left,
+            ]);
+            expect(railRight).toBeLessThanOrEqual(contentLeft + 1);
+          }
         }
         await page.screenshot({
           path: `test-results/visual-${role}-${route || 'dashboard'}-${size.width}.png`,
@@ -73,8 +84,11 @@ test('all restored screens render on desktop and phone without page overflow', a
     await page.getByRole('button', { name: 'Keluar', exact: true }).click();
     await expect(page).toHaveURL(/\/login$/);
   }
-  await page.goto('/booking');
-  await expect(page.getByRole('heading', { name: 'Pilih outlet', exact: true })).toBeVisible();
+  // The admin spec suspends and re-approves the seeded shop, which unpublishes its outlets.
+  await page.goto('/booking/garasi-barber');
+  await expect(
+    page.getByRole('heading', { name: /^(Pilih outlet|Halaman booking tidak tersedia)$/ }),
+  ).toBeVisible();
   await page.screenshot({ path: 'test-results/visual-booking-home-390.png', animations: 'disabled' });
   await page.goto('/login');
   await page.screenshot({ path: 'test-results/visual-auth-390.png', animations: 'disabled' });

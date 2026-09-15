@@ -8,16 +8,26 @@ export function availability(
   barberId: string,
   date: string,
   internal = false,
-  ignoreId = '',
+  existing?: Row,
 ) {
   parse(dateSchema, date);
-  const service = one('SELECT * FROM services WHERE id=? AND outletId=? AND active=1', serviceId, outletId);
+  // An existing booking keeps its snapshot duration, so its service may since have been archived.
+  const service = existing
+    ? { duration: existing.duration }
+    : one('SELECT * FROM services WHERE id=? AND outletId=? AND active=1', serviceId, outletId);
   const barber = one('SELECT * FROM barbers WHERE id=? AND outletId=? AND active=1', barberId, outletId);
   const outlet = one(
     'SELECT o.*, g.status FROM outlets o JOIN orgs g ON g.id=o.orgId WHERE o.id=? AND o.active=1',
     outletId,
   );
-  if (!service || !barber || !outlet || outlet.status !== 'approved' || (!internal && !outlet.published))
+  if (
+    !service ||
+    !barber ||
+    !outlet ||
+    outlet.status !== 'approved' ||
+    (!internal && !outlet.published) ||
+    (existing && existing.outletId !== outletId)
+  )
     throw new NotFoundException('Layanan atau outlet tidak tersedia.');
   const weekday = new Date(`${date}T12:00:00+07:00`).getUTCDay();
   if (
@@ -31,13 +41,13 @@ export function availability(
     "SELECT starts, ends FROM bookings WHERE barberId=? AND date=? AND id!=? AND status NOT IN ('cancelled','no_show')",
     barberId,
     date,
-    ignoreId,
+    existing?.id ?? '',
   );
   const slots: string[] = [];
-  const duration = (service.duration + 10) * 60_000;
-  for (let start = opening; start + duration <= closing; start += duration) {
+  const length = (service.duration + 10) * 60_000;
+  for (let start = opening; start + length <= closing; start += length) {
     if (start < Date.now() + (internal ? 0 : 60 * 60_000) || start > Date.now() + 30 * 86400_000) continue;
-    if (bookings.some((b) => b.starts < start + duration && b.ends > start)) continue;
+    if (bookings.some((b) => b.starts < start + length && b.ends > start)) continue;
     slots.push(new Date(start + 7 * 3600_000).toISOString().slice(11, 16));
   }
   return { slots, service, barber, outlet };

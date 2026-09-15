@@ -45,6 +45,63 @@ export function run(sql: string, ...args: SQLInputValue[]) {
 }
 if (!all('PRAGMA table_info(refunds)').some((column) => column.name === 'paidAt'))
   db.exec('ALTER TABLE refunds ADD COLUMN paidAt TEXT');
+export const reservedSlugs = new Set([
+  'status',
+  'booking',
+  'admin',
+  'api',
+  'app',
+  'login',
+  'owner',
+  'kasir',
+  'www',
+]);
+export function slugify(value: string) {
+  const slug = value
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .slice(0, 48)
+    .replace(/^-+|-+$/g, '');
+  return slug || 'barbershop';
+}
+export function uniqueSlug(base: string, taken: (slug: string) => boolean) {
+  let root = slugify(base);
+  if (reservedSlugs.has(root)) root = `${root}-barber`;
+  let slug = root;
+  for (let n = 2; taken(slug); n++) slug = `${root}-${n}`;
+  return slug;
+}
+export const orgSlug = (name: string) =>
+  uniqueSlug(name, (slug) => !!one('SELECT id FROM orgs WHERE slug=?', slug));
+export function outletSlug(orgId: string, name: string) {
+  const org = one('SELECT slug FROM orgs WHERE id=?', orgId);
+  const own = slugify(name);
+  // "Garasi Barber Tebet" under "garasi-barber" becomes "tebet".
+  const base = org?.slug && own.startsWith(`${org.slug}-`) ? own.slice(org.slug.length + 1) : own;
+  return uniqueSlug(base, (slug) => !!one('SELECT id FROM outlets WHERE orgId=? AND slug=?', orgId, slug));
+}
+if (!all('PRAGMA table_info(orgs)').some((column) => column.name === 'slug'))
+  db.exec('ALTER TABLE orgs ADD COLUMN slug TEXT');
+if (!all('PRAGMA table_info(outlets)').some((column) => column.name === 'slug'))
+  db.exec('ALTER TABLE outlets ADD COLUMN slug TEXT');
+for (const org of all("SELECT id,name FROM orgs WHERE slug IS NULL OR slug='' ORDER BY created"))
+  run('UPDATE orgs SET slug=? WHERE id=?', orgSlug(org.name), org.id);
+for (const outlet of all("SELECT id,orgId,name FROM outlets WHERE slug IS NULL OR slug=''"))
+  run('UPDATE outlets SET slug=? WHERE id=?', outletSlug(outlet.orgId, outlet.name), outlet.id);
+if (!all('PRAGMA table_info(orgs)').some((column) => column.name === 'publishedAt')) {
+  db.exec('ALTER TABLE orgs ADD COLUMN publishedAt TEXT');
+  // Existing data has no publish history: a live outlet or any public booking means the link was shared.
+  run(
+    "UPDATE orgs SET publishedAt=? WHERE EXISTS(SELECT 1 FROM outlets o WHERE o.orgId=orgs.id AND o.published=1) OR EXISTS(SELECT 1 FROM bookings b WHERE b.orgId=orgs.id AND b.source='public')",
+    new Date().toISOString(),
+  );
+}
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS org_slug ON orgs(slug);
+  CREATE UNIQUE INDEX IF NOT EXISTS outlet_slug ON outlets(orgId, slug);
+`);
 export function transaction<T>(fn: () => T): T {
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -99,15 +156,25 @@ export function seed() {
   if (one('SELECT id FROM users LIMIT 1')) return;
   const org = id(),
     outlet = id();
-  run('INSERT INTO orgs VALUES(?,?,?,?,?)', org, 'Garasi Barber', 'approved', '', now());
   run(
-    'INSERT INTO outlets VALUES(?,?,?,?,?,?)',
+    'INSERT INTO orgs(id,name,status,reason,created,slug,publishedAt) VALUES(?,?,?,?,?,?,?)',
+    org,
+    'Garasi Barber',
+    'approved',
+    '',
+    now(),
+    orgSlug('Garasi Barber'),
+    now(),
+  );
+  run(
+    'INSERT INTO outlets(id,orgId,name,address,published,active,slug) VALUES(?,?,?,?,?,?,?)',
     outlet,
     org,
     'Garasi Barber Tebet',
     'Tebet, Jakarta Selatan',
     1,
     1,
+    outletSlug(org, 'Garasi Barber Tebet'),
   );
   run('INSERT INTO services VALUES(?,?,?,?,?,?,?)', id(), org, outlet, 'Haircut', 65000, 45, 1);
   run('INSERT INTO services VALUES(?,?,?,?,?,?,?)', id(), org, outlet, 'Haircut + Wash', 85000, 60, 1);

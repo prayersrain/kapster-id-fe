@@ -73,7 +73,11 @@ test('public booking, role boundaries, cash shift, refund, snapshot, and restart
   assert.equal((await request('admin/data', undefined, owner)).status, 403);
   assert.equal((await request('app/services', { name: 'Unauthorized' }, cashier)).status, 403);
   assert.equal((await request('auth/logout', {}, owner, 'POST', 'https://attacker.invalid')).status, 403);
-  const catalog = await ok('public/catalog');
+  assert.equal((await request('public/catalog')).status, 404);
+  assert.equal((await request('public/shops/tidak-ada')).status, 404);
+  const catalog = await ok('public/shops/garasi-barber');
+  assert.equal(catalog.org.name, 'Garasi Barber');
+  assert.equal(catalog.outlets[0].slug, 'tebet');
   assert.ok(catalog.outlets.length);
   assert.equal('orgId' in catalog.outlets[0], false);
   const outletId = catalog.outlets[0].id,
@@ -102,6 +106,15 @@ test('public booking, role boundaries, cash shift, refund, snapshot, and restart
   assert.equal((await request(`public/bookings/${booking.id}`)).status, 404);
   const detail = await ok(`public/bookings/${booking.token}`);
   assert.equal(detail.price, service.price);
+  assert.equal(detail.orgSlug, 'garasi-barber');
+  // Reschedule availability ignores the booking itself, so its current slot stays selectable.
+  const moveSlots = await ok(
+    `app/slots?${new URLSearchParams({ outletId, serviceId: service.id, barberId: barber.id, date, bookingId: booking.id })}`,
+    undefined,
+    cashier,
+  );
+  assert.ok(moveSlots.slots.includes(input.time));
+  assert.equal((await request('app/org', { slug: 'garasi-baru' }, owner, 'PATCH')).status, 409);
   assert.equal('phone' in detail, false);
   assert.equal(
     (await request(`app/bookings/${booking.id}/pay`, { tendered: service.price }, cashier)).status,
@@ -113,6 +126,29 @@ test('public booking, role boundaries, cash shift, refund, snapshot, and restart
   assert.equal(
     (await request(`app/bookings/${booking.id}/pay`, { tendered: service.price - 1 }, cashier)).status,
     400,
+  );
+  // Archiving a service must not block rescheduling bookings that already use it.
+  await ok(
+    `app/services/${service.id}`,
+    { name: service.name, price: service.price, duration: service.duration, active: false },
+    owner,
+    'PATCH',
+  );
+  const archivedSlots = await ok(
+    `app/slots?${new URLSearchParams({ outletId, serviceId: service.id, barberId: barber.id, date, bookingId: booking.id })}`,
+    undefined,
+    cashier,
+  );
+  assert.ok(archivedSlots.slots.includes(input.time));
+  assert.equal(
+    (
+      await request(
+        `app/slots?${new URLSearchParams({ outletId, serviceId: service.id, barberId: barber.id, date })}`,
+        undefined,
+        cashier,
+      )
+    ).status,
+    404,
   );
   await ok(
     `app/services/${service.id}`,
@@ -188,6 +224,11 @@ test('registration, token replay, onboarding review, tenant isolation and suspen
   const firstData = await ok('app/data', undefined, owner);
   const secondData = await ok('app/data', undefined, second);
   assert.equal(secondData.bookings.length, 0);
+  assert.equal(secondData.org.slug, 'bisnis-kedua');
+  assert.equal((await request('app/org', { slug: 'garasi-barber' }, second, 'PATCH')).status, 409);
+  assert.equal((await request('app/org', { slug: 'Bad Slug!' }, second, 'PATCH')).status, 400);
+  await ok('app/org', { slug: 'kedua-barber' }, second, 'PATCH');
+  secondData.org.slug = 'kedua-barber';
   const foreign = firstData.outlets[0];
   assert.equal(
     (await request('app/services', { outletId: foreign.id, name: 'Foreign', price: 1, duration: 10 }, second))
@@ -245,16 +286,32 @@ test('registration, token replay, onboarding review, tenant isolation and suspen
     second,
     'PATCH',
   );
-  assert.ok((await ok('public/catalog')).outlets.some((o) => o.id === outlet.id));
+  assert.ok((await ok(`public/shops/${secondData.org.slug}`)).outlets.every((o) => o.id === outlet.id));
+  // Once a link has been published it may already be shared, so unpublishing must not unlock it.
+  await ok(
+    `app/outlets/${outlet.id}`,
+    { name: 'Outlet Baru', address: 'Alamat outlet baru', published: false },
+    second,
+    'PATCH',
+  );
+  assert.equal((await request('app/org', { slug: 'kedua-ganti' }, second, 'PATCH')).status, 409);
+  assert.ok((await ok('app/data', undefined, second)).org.publishedAt);
+  await ok(
+    `app/outlets/${outlet.id}`,
+    { name: 'Outlet Baru', address: 'Alamat outlet baru', published: true },
+    second,
+    'PATCH',
+  );
+  assert.equal(
+    (await ok('public/shops/garasi-barber')).outlets.some((o) => o.id === outlet.id),
+    false,
+  );
   await ok(
     `admin/orgs/${secondData.org.id}/status`,
     { status: 'suspended', reason: 'Pengujian pembatasan akses' },
     admin,
   );
-  assert.equal(
-    (await ok('public/catalog')).outlets.some((o) => o.id === outlet.id),
-    false,
-  );
+  assert.equal((await request(`public/shops/${secondData.org.slug}`)).status, 404);
   assert.equal((await request('app/shifts/open', { outletId: outlet.id, opening: 0 }, second)).status, 403);
   await ok('auth/forgot', { email: 'second@example.test' });
   mails = (await readFile(resolve(dir, 'mail.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);

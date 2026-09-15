@@ -1,10 +1,39 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
+z.config(z.locales.id());
+const fieldNames: Record<string, string> = {
+  name: 'Nama',
+  business: 'Nama bisnis',
+  email: 'Email',
+  password: 'Password',
+  address: 'Alamat',
+  price: 'Harga',
+  duration: 'Durasi',
+  start: 'Jam mulai',
+  end: 'Jam selesai',
+  days: 'Hari kerja',
+  reason: 'Alasan',
+  phone: 'Nomor WhatsApp',
+  date: 'Tanggal',
+  time: 'Jam',
+  opening: 'Modal awal',
+  counted: 'Uang terhitung',
+  tendered: 'Uang diterima',
+  slug: 'Link booking',
+  outletId: 'Outlet',
+  serviceId: 'Layanan',
+  barberId: 'Kapster',
+};
 export function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
   if (!result.success)
     throw new BadRequestException(
-      result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '),
+      result.error.issues
+        .map((i) => {
+          const label = fieldNames[String(i.path[0])] ?? i.path.join('.');
+          return !label || i.message.startsWith(label) ? i.message : `${label}: ${i.message}`;
+        })
+        .join('; '),
     );
   return result.data;
 }

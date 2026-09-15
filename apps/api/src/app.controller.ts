@@ -13,7 +13,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { z } from 'zod';
-import { all, one, run, id, now, hashPassword, transaction, localMail, audit, Row } from './database';
+import {
+  all,
+  one,
+  run,
+  id,
+  now,
+  hashPassword,
+  transaction,
+  localMail,
+  audit,
+  Row,
+  outletSlug,
+  slugify,
+  reservedSlugs,
+} from './database';
 import { parse, text, email, uuid, money, reason, date, time, jakartaDate } from './validation';
 import { AuthGuard, AuthRequest, scope, role, operational } from './auth';
 import { availability, createBooking, expectedCash } from './booking';
@@ -74,10 +88,49 @@ export class AppController {
     const data = parse(z.object({ name: text, address: text }), body);
     const outletId = id();
     transaction(() => {
-      run('INSERT INTO outlets VALUES(?,?,?,?,?,?)', outletId, req.user.orgId, data.name, data.address, 0, 1);
+      run(
+        'INSERT INTO outlets(id,orgId,name,address,published,active,slug) VALUES(?,?,?,?,?,?,?)',
+        outletId,
+        req.user.orgId,
+        data.name,
+        data.address,
+        0,
+        1,
+        outletSlug(req.user.orgId, data.name),
+      );
       audit(req.user, 'outlet.created', outletId);
     });
     return { id: outletId };
+  }
+  @Patch('org') editOrg(@Req() req: AuthRequest, @Body() body: unknown) {
+    role(req.user, 'owner');
+    const data = parse(
+      z.object({
+        slug: z
+          .string()
+          .trim()
+          .toLowerCase()
+          .regex(
+            /^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])$/,
+            'Gunakan 3–48 huruf kecil, angka, atau tanda hubung.',
+          ),
+      }),
+      body,
+    );
+    if (slugify(data.slug) !== data.slug || reservedSlugs.has(data.slug))
+      throw new BadRequestException('Link booking tidak dapat memakai nama tersebut.');
+    return transaction(() => {
+      // A link that was ever published may already be shared; unpublishing later does not make it safe to change.
+      if (one('SELECT publishedAt FROM orgs WHERE id=?', req.user.orgId)?.publishedAt)
+        throw new ConflictException(
+          'Link booking terkunci karena sudah pernah diterbitkan dan mungkin sudah dibagikan ke customer.',
+        );
+      if (one('SELECT id FROM orgs WHERE slug=? AND id!=?', data.slug, req.user.orgId))
+        throw new ConflictException('Link booking sudah dipakai bisnis lain. Coba nama lain.');
+      run('UPDATE orgs SET slug=? WHERE id=?', data.slug, req.user.orgId);
+      audit(req.user, 'org.slug_updated', req.user.orgId, data.slug);
+      return { ok: true, message: `Link booking diperbarui menjadi /booking/${data.slug}.` };
+    });
   }
   @Patch('outlets/:id') editOutlet(
     @Req() req: AuthRequest,
@@ -96,6 +149,8 @@ export class AppController {
         throw new BadRequestException('Tambahkan layanan dan kapster sebelum menerbitkan booking.');
     }
     transaction(() => {
+      if (data.published)
+        run('UPDATE orgs SET publishedAt=COALESCE(publishedAt, ?) WHERE id=?', now(), req.user.orgId);
       run(
         'UPDATE outlets SET name=?,address=?,published=? WHERE id=?',
         data.name,
@@ -336,9 +391,16 @@ export class AppController {
   }
   @Get('slots') slots(@Req() req: AuthRequest, @Query() query: unknown) {
     operational(req.user);
-    const data = parse(z.object({ outletId: uuid, serviceId: uuid, barberId: uuid, date }), query);
+    const data = parse(
+      z.object({ outletId: uuid, serviceId: uuid, barberId: uuid, date, bookingId: uuid.optional() }),
+      query,
+    );
     scope(req.user, data.outletId);
-    return { slots: availability(data.outletId, data.serviceId, data.barberId, data.date, true).slots };
+    // Rescheduling keeps the booking's snapshot duration and must not collide with itself.
+    const booking = data.bookingId ? this.booking(req.user, data.bookingId) : undefined;
+    return {
+      slots: availability(data.outletId, data.serviceId, data.barberId, data.date, true, booking).slots,
+    };
   }
   @Post('bookings') book(@Req() req: AuthRequest, @Body() body: unknown) {
     operational(req.user);

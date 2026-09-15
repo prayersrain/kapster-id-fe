@@ -889,6 +889,10 @@
 .restored-flow .primary {
   background: #28221c;
 }
+.restored-booking [class*='stepContent'],
+.restored-booking [class*='homeContent'] {
+  padding-bottom: 96px;
+}
 .restored-booking .booking-step-title {
   display: flex;
   align-items: center;
@@ -1294,5 +1298,196 @@
   .restored-booking button,
   .restored-booking a[class*='Button'] {
     display: none;
+  }
+}
+
+.rail-shift {
+  display: none;
+}
+
+/* Tablet: landscape tablets (901–1279px) get an icon rail so tables keep their width;
+   the menu button expands the full sidebar as an overlay. */
+@media (min-width: 901px) and (max-width: 1279px) {
+  .restored-workspace > aside {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    width: 92px;
+    flex-basis: 92px;
+    padding: 14px 8px;
+    overflow-x: hidden;
+    transform: none;
+    transition:
+      width 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .restored-workspace > div[class*='appBody'] {
+    margin-left: 92px;
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) :is(.logo-lockup strong, a > small),
+  .restored-workspace
+    > aside:not([class*='sidebarOpen'])
+    > :is(button:not(.rail-shift), section, div[class*='sidebarFoot']) {
+    display: none;
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) > .rail-shift {
+    display: grid;
+    gap: 5px;
+    place-items: center;
+    margin-top: auto;
+    padding: 12px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    color: #f1f1f1;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) > .rail-shift.on {
+    border-color: rgba(201, 154, 89, 0.6);
+    color: #f2d7a8;
+    background: rgba(168, 115, 45, 0.22);
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) > .rail-shift small {
+    color: inherit;
+    font-size: 9px;
+    text-align: center;
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) > a {
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) nav {
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) nav button {
+    height: auto;
+    min-height: 60px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 2px;
+    border-radius: 10px;
+    font-size: 10px;
+    line-height: 1.15;
+    text-align: center;
+    box-shadow: none;
+  }
+  .restored-workspace > aside:not([class*='sidebarOpen']) nav button span {
+    overflow-wrap: anywhere;
+  }
+  .restored-workspace > aside[class*='sidebarOpen'] {
+    width: 250px;
+    padding: 18px 13px;
+    box-shadow: 18px 0 50px rgba(0, 0, 0, 0.28);
+  }
+  .restored-workspace [class*='sidebarBackdrop'] {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    display: block;
+    border: 0;
+    border-radius: 0;
+    background: rgba(10, 12, 14, 0.42);
+  }
+  .restored-workspace header [class*='menuButton'] {
+    display: grid;
+  }
+  .restored-workspace [class*='outletManagement'] {
+    grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+  }
+  .role-admin [class*='tenantLayout'] {
+    grid-template-columns: minmax(0, 1fr) 285px;
+  }
+}
+@media (min-width: 1280px) {
+  .restored-workspace header [class*='menuButton'] {
+    display: none;
+  }
+}
+@media (max-width: 1279px) {
+  .restored-workspace [class*='splitDetailLayout']:has(> .detail-drawer) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .restored-workspace .detail-drawer {
+    position: fixed;
+    z-index: 90;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(420px, 100vw);
+    min-height: 0;
+    margin: 0;
+    overflow: auto;
+    border-radius: 0;
+    visibility: hidden;
+    transform: translateX(105%);
+    transition:
+      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0.24s;
+    box-shadow: -18px 0 50px rgba(15, 20, 30, 0.18);
+  }
+  .restored-workspace .detail-drawer.open {
+    visibility: visible;
+    transform: none;
+  }
+  .restored-workspace .detail-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    display: block;
+    border: 0;
+    border-radius: 0;
+    background: rgba(12, 16, 22, 0.4);
+  }
+  .restored-workspace .detail-drawer-close {
+    display: grid;
+    margin-left: auto;
+  }
+  .restored-workspace .management-layout.services-live > [class*='servicePricePanel'] {
+    display: none;
+  }
+  .restored-workspace [class*='metricCard'] strong {
+    font-size: clamp(15px, 10.5cqi, 24px);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 900px) {
+  .restored-workspace .live-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .restored-workspace [class*='metricCard'] strong {
+    font-size: clamp(16px, 9cqi, 24px);
+  }
+}
+/* Portrait tablets: the auth split layout needs ~880px, so switch to the single-column form earlier. */
+@media (min-width: 801px) and (max-width: 900px) {
+  .restored-auth {
+    display: block;
+  }
+  .restored-auth > [class*='visualPane'] {
+    display: none;
+  }
+  .restored-auth > [class*='formPane'] {
+    padding: 40px 32px 28px;
+  }
+  .restored-auth [class*='mobileLogo'] {
+    display: block;
+    width: min(100%, 480px);
+    margin: 0 auto 52px;
+  }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .restored-auth {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+}
+@media (max-width: 1279px) {
+  .restored-workspace .detail-drawer {
+    background: #fff;
   }
 }

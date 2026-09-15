@@ -80,6 +80,7 @@ export function AdminPresentation({
       <div className="tenant-detail-heading">
         <span className={a.tenantMarkLarge}>{selected.name.slice(0, 2).toUpperCase()}</span>
         <h2>{selected.name}</h2>
+        <small>Link booking: /booking/{selected.slug}</small>
         <Badge value={selected.status} />
       </div>
       <div className="panel-padding">
@@ -259,7 +260,9 @@ export function AdminPresentation({
           </span>
           <div>
             <h2>{selected.name}</h2>
-            <p>Terdaftar {new Date(selected.created).toLocaleDateString('id-ID')}</p>
+            <p>
+              Terdaftar {new Date(selected.created).toLocaleDateString('id-ID')} · /booking/{selected.slug}
+            </p>
           </div>
           <Badge value={selected.status} />
           <span className="tenant-hero-spacer" />

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AppData, Entity, User, rupiah, today } from './api';
+import { AppData, dayLabel, Entity, User, rupiah, shortDate, today } from './api';
 import { Badge, Empty, Table } from './ui';
 import { Person } from './WorkspacePresentation';
 import { Glyph } from './Glyph';
@@ -54,7 +54,7 @@ export function CashierCustomers({ data }: { data: AppData }) {
           <Person name={v.name} />,
           v.phone,
           v.completed,
-          v.visits[0].date,
+          shortDate(v.visits[0].date),
           <Badge value={v.visits.length > 1 ? 'Repeat' : 'Pelanggan Baru'} />,
           <Link className="primary" to="/kasir/new">
             Booking
@@ -170,7 +170,7 @@ export function CashierQueue({
 }: {
   data: AppData;
   bookings: Entity[];
-  actions: (b: Entity) => ReactNode;
+  actions: (b: Entity, variant?: 'row' | 'panel') => ReactNode;
   search: string;
   setSearch: (v: string) => void;
   compact?: boolean;
@@ -243,7 +243,7 @@ export function CashierQueue({
                     <p key={v.id}>
                       <span />
                       <b>
-                        {v.date} · {v.serviceName}
+                        {shortDate(v.date)} · {v.serviceName}
                       </b>
                       <Badge value={v.status} />
                     </p>
@@ -256,7 +256,7 @@ export function CashierQueue({
               <h3>Informasi Booking</h3>
               <dl className={c.bookingInfo}>
                 {[
-                  ['Waktu', `${selected.date} · ${selected.time}`],
+                  ['Waktu', `${shortDate(selected.date)} · ${selected.time} WIB`],
                   ['Jenis', selected.source === 'public' ? 'Booking Online' : 'Booking Kasir'],
                   ['Kapster', barber(selected.barberId)],
                   ['Durasi total', `${selected.duration} menit`],
@@ -269,7 +269,10 @@ export function CashierQueue({
                 ))}
               </dl>
             </section>
-            <section className={`${c.panel} ${c.actionStack}`}>{actions(selected)}</section>
+            <section className={`${c.panel} ${c.actionStack}`}>
+              <h3>Tindakan</h3>
+              {actions(selected, 'panel')}
+            </section>
           </aside>
         </div>
       </>
@@ -341,13 +344,13 @@ export function CashierQueue({
           ))}
         </div>
         <Table
-          headers={['No.', 'Waktu', 'Nama Customer', 'Layanan', 'Kapster', 'Status', 'Pembayaran', 'Aksi']}
+          headers={['No.', 'Waktu', 'Nama Customer', 'Layanan / Kapster', 'Status', 'Aksi']}
           rows={rows.map((v, i) => [
             i + 1,
-            <>
+            <span className="nowrap">
               <strong>{v.time}</strong>
-              <small>{v.date}</small>
-            </>,
+              <small>{dayLabel(v.date)}</small>
+            </span>,
             <button
               className="person-link"
               onClick={() => setSelected(v.id)}
@@ -355,10 +358,14 @@ export function CashierQueue({
             >
               <Person name={v.name} detail={v.phone} />
             </button>,
-            v.serviceName,
-            barber(v.barberId),
-            <Badge value={v.status} />,
-            <Badge value={v.paid ? 'Lunas' : 'Belum bayar'} />,
+            <>
+              {v.serviceName}
+              <small>{barber(v.barberId)}</small>
+            </>,
+            <span className="badge-stack">
+              <Badge value={v.status} />
+              <Badge value={v.paid ? 'Lunas' : 'Belum bayar'} />
+            </span>,
             actions(v),
           ])}
         />

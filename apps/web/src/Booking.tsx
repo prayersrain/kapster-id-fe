@@ -1,21 +1,65 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, Catalog, Entity, rupiah, today } from './api';
-import { BookingScreen, BookingTicket } from './BookingScreen';
+import { api, ApiError, bookingLink, Catalog, Entity, today } from './api';
+import { BookingDirectory, BookingMissing, BookingScreen, BookingTicket } from './BookingScreen';
+
+export function PublicBooking() {
+  const { shop = '', outlet: outletSlug } = useParams();
+  const [catalog, setCatalog] = useState<Catalog | null>(null),
+    [missing, setMissing] = useState(''),
+    [error, setError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalog(null);
+    setMissing('');
+    api<Catalog>(`public/shops/${encodeURIComponent(shop)}`, undefined, 'GET', controller.signal)
+      .then(setCatalog)
+      .catch((e) => {
+        if (e.name === 'AbortError') return;
+        if (e instanceof ApiError && e.status === 404) setMissing(e.message);
+        else setError(e.message);
+      });
+    return () => controller.abort();
+  }, [shop]);
+  if (!shop) return <BookingDirectory />;
+  if (missing) return <BookingMissing message={missing} />;
+  const preselected =
+    catalog?.outlets.find((o) => o.slug === outletSlug) ??
+    (catalog?.outlets.length === 1 ? catalog.outlets[0] : undefined);
+  if (catalog && outletSlug && !catalog.outlets.some((o) => o.slug === outletSlug))
+    return (
+      <BookingMissing
+        message="Outlet ini tidak tersedia untuk booking online."
+        shop={{ name: catalog.org!.name, href: bookingLink(catalog.org!.slug) }}
+      />
+    );
+  return (
+    <Booking
+      key={`${shop}/${outletSlug ?? ''}/${catalog ? 'ready' : 'loading'}`}
+      catalog={catalog ?? undefined}
+      loadError={error}
+      initialOutlet={preselected?.id}
+    />
+  );
+}
 
 export function Booking({
   internal = false,
-  catalog: supplied,
+  catalog,
   onBooked,
+  initialOutlet = '',
+  loadError = '',
 }: {
   internal?: boolean;
   catalog?: Catalog;
   onBooked?: () => void;
+  initialOutlet?: string;
+  loadError?: string;
 }) {
-  const [catalog, setCatalog] = useState<Catalog | null>(supplied ?? null),
-    [error, setError] = useState(''),
-    [step, setStep] = useState(0);
-  const [outletId, setOutlet] = useState(''),
+  const [error, setError] = useState(''),
+    // Cashiers work inside one outlet, so they start directly at the service step.
+    [step, setStep] = useState(internal && initialOutlet ? 1 : 0);
+  const [outletId, setOutlet] = useState(initialOutlet),
     [serviceId, setService] = useState(''),
     [barberId, setBarber] = useState('');
   const [date, setDate] = useState(today()),
@@ -26,12 +70,6 @@ export function Booking({
     [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Entity | null>(null);
   const navigate = useNavigate();
-  useEffect(() => {
-    if (!supplied)
-      api<Catalog>('public/catalog')
-        .then(setCatalog)
-        .catch((e) => setError(e.message));
-  }, [supplied]);
   useEffect(() => {
     if (!outletId || !serviceId || !barberId) return;
     const controller = new AbortController();
@@ -57,9 +95,10 @@ export function Booking({
   const maxDate = new Date(Date.now() + 30 * 86400_000 + 7 * 3600_000).toISOString().slice(0, 10);
   return (
     <BookingScreen
-      catalog={catalog}
+      catalog={catalog ?? null}
       step={step}
-      error={error}
+      firstStep={internal && initialOutlet ? 1 : 0}
+      error={error || loadError}
       outletId={outletId}
       serviceId={serviceId}
       barberId={barberId}
@@ -91,8 +130,11 @@ export function Booking({
       onCustomer={setCustomer}
       onRestart={() => {
         setResult(null);
-        setStep(0);
+        setStep(internal && initialOutlet ? 1 : 0);
+        setService('');
+        setBarber('');
         setTime('');
+        setCustomer({ name: '', phone: '' });
       }}
       onConfirm={async () => {
         setBusy(true);
