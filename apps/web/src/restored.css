@@ -1114,12 +1114,6 @@
   .restored-workspace [class*='globalSearch'] {
     width: min(350px, 40vw);
   }
-  .restored-workspace [class*='onboardingBanner'] {
-    flex-wrap: wrap;
-  }
-  .restored-workspace [class*='onboardingCopy'] {
-    min-width: 180px;
-  }
 }
 @media (max-width: 620px) {
   .live-workspace,
@@ -1221,12 +1215,6 @@
   }
   .restored-workspace [class*='bottomBanner'] > div {
     min-width: 220px;
-  }
-  .restored-workspace [class*='onboardingProgress'] {
-    display: none;
-  }
-  .restored-workspace [class*='onboardingCopy'] {
-    width: 100%;
   }
   .role-admin [class*='kpiSix'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));

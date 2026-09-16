@@ -45,3 +45,112 @@ export function setupProgress(data: SetupData) {
     published: data.outlets.some((o) => o.published),
   };
 }
+
+export type SetupProgress = ReturnType<typeof setupProgress>;
+
+/** First required onboarding step still incomplete, or the summary once the required data is in place. */
+export function nextSetupStep(progress: SetupProgress) {
+  return !progress.outlet
+    ? 'outlet'
+    : !progress.services
+      ? 'layanan'
+      : !progress.barbers
+        ? 'kapster'
+        : 'ringkasan';
+}
+
+export type SetupStageState = 'done' | 'active' | 'next';
+export type SetupBannerView = {
+  tone: 'progress' | 'attention' | 'approved';
+  badge: string;
+  title: string;
+  description: string;
+  action: string;
+  /** Always an onboarding step: the banner only navigates, it never submits or publishes. */
+  to: string;
+  stages: { label: string; note: string; state: SetupStageState }[];
+};
+
+/**
+ * The dashboard's summary of activation: three stages over the six onboarding steps. `null` hides it,
+ * both once booking is live and for any status the app does not define, so it never invites an action the
+ * server would refuse.
+ */
+export function setupBanner(data: SetupData): SetupBannerView | null {
+  const progress = setupProgress(data);
+  const status = data.org.status;
+  if (status === 'approved' && progress.published) return null;
+  const step = (id: string) => `/owner/onboarding?langkah=${id}`;
+  const stages = (active: number, notes: [string, string, string]) =>
+    ['Data bisnis', 'Review Admin', 'Publikasi'].map((label, i) => ({
+      label,
+      note: notes[i],
+      state: (i < active ? 'done' : i === active ? 'active' : 'next') as SetupStageState,
+    }));
+  switch (status) {
+    case 'draft':
+      return {
+        tone: 'progress',
+        badge: 'Belum selesai',
+        title: 'Siapkan bisnis untuk booking pertama',
+        description: 'Lengkapi data bisnis, outlet, layanan, dan jadwal kapster sebelum mengajukan review.',
+        action: 'Lanjutkan setup',
+        to: step(nextSetupStep(progress)),
+        stages: stages(0, [
+          progress.ready ? 'Siap diajukan' : 'Lengkapi setup',
+          'Belum diajukan',
+          'Setelah disetujui',
+        ]),
+      };
+    case 'pending':
+      return {
+        tone: 'progress',
+        badge: 'Menunggu review',
+        title: 'Pengajuan Anda sedang ditinjau',
+        description:
+          'Data bisnis sudah dikirim ke Admin. Setelah disetujui, Anda bisa menerbitkan halaman booking.',
+        action: 'Lihat pengajuan',
+        to: step('ringkasan'),
+        stages: stages(1, ['Sudah dikirim', 'Dalam proses', 'Setelah disetujui']),
+      };
+    case 'rejected':
+      return {
+        tone: 'attention',
+        badge: 'Perlu revisi',
+        title: 'Ada data yang perlu diperbaiki',
+        description: 'Baca catatan Admin, perbaiki data yang diminta, lalu kirim ulang pengajuan Anda.',
+        action: 'Perbaiki setup',
+        to: step(nextSetupStep(progress)),
+        stages: stages(0, ['Perlu diperbaiki', 'Ajukan ulang', 'Setelah disetujui']),
+      };
+    case 'approved':
+      return {
+        tone: 'approved',
+        badge: 'Disetujui',
+        title: 'Bisnis siap menerima booking',
+        description:
+          'Pengajuan Anda telah disetujui. Terbitkan outlet agar halaman booking bisa diakses customer.',
+        action: 'Terbitkan booking',
+        to: step('ringkasan'),
+        stages: stages(2, [
+          'Lengkap',
+          'Disetujui',
+          progress.outlets.some((o) => o.ready) ? 'Siap diterbitkan' : 'Lengkapi outlet dulu',
+        ]),
+      };
+    case 'suspended':
+      // Suspension unpublishes every outlet and only Admin can lift it, so there is nothing to publish.
+      return {
+        tone: 'attention',
+        badge: 'Ditangguhkan',
+        title: 'Booking publik dihentikan sementara',
+        description:
+          'Admin menangguhkan bisnis ini sehingga halaman booking tidak bisa diakses customer. Lihat catatan Admin di ringkasan setup.',
+        action: 'Lihat status',
+        to: step('ringkasan'),
+        stages: stages(1, ['Lengkap', 'Ditangguhkan', 'Dihentikan sementara']),
+      };
+    default:
+      return null;
+  }
+}

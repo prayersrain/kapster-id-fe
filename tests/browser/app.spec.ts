@@ -472,7 +472,11 @@ test('new Owner completes guided onboarding, handles a revision, and publishes b
 
   // The revision note and the fix happen inside the same onboarding space.
   await ownerLogin();
-  await page.getByRole('link', { name: /Lanjutkan setup/ }).click();
+  const setupBanner = page.locator('section.setup-status');
+  await expect(setupBanner).toContainText('Perlu revisi');
+  await expect(setupBanner).not.toContainText('Disetujui');
+  await setupBanner.getByRole('link', { name: 'Perbaiki setup' }).click();
+  await expect(page).toHaveURL(/\/owner\/onboarding\?langkah=ringkasan$/);
   await expect(page.getByText('Harga layanan belum sesuai daftar outlet')).toBeVisible();
   await card
     .locator('.ob-summary-section')
@@ -498,7 +502,9 @@ test('new Owner completes guided onboarding, handles a revision, and publishes b
   await page.getByRole('button', { name: 'Keluar', exact: true }).click();
 
   await ownerLogin();
-  await page.getByRole('link', { name: /Terbitkan booking/ }).click();
+  await expect(setupBanner).toContainText('Disetujui');
+  await setupBanner.getByRole('link', { name: 'Terbitkan booking' }).click();
+  await expect(page).toHaveURL(/\/owner\/onboarding\?langkah=ringkasan$/);
   await card.getByRole('button', { name: 'Terbitkan booking' }).click();
   await expect(card.getByRole('heading', { name: 'Halaman booking sudah terbit' })).toBeVisible();
   await expect(card.locator('.ob-link code')).toContainText('/booking/barber-browser-baru');
@@ -508,6 +514,10 @@ test('new Owner completes guided onboarding, handles a revision, and publishes b
   );
   await steps.getByRole('button', { name: /Profil bisnis/ }).click();
   await expect(card.getByLabel('Link booking')).toHaveAttribute('readonly', '');
+  // Booking is live, so the dashboard no longer shows the setup banner.
+  await page.goto('/owner');
+  await expect(page.locator('.live-workspace h1')).toBeVisible();
+  await expect(setupBanner).toHaveCount(0);
 
   await page.goto('/booking/barber-browser-baru');
   await expect(page.getByRole('heading', { name: 'Barber Browser Baru', exact: true })).toBeVisible();

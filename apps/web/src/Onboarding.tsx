@@ -12,7 +12,7 @@ import {
   schedulePreview,
   serviceFields,
 } from './setupFields';
-import { setupProgress } from './setupRules';
+import { nextSetupStep, setupProgress } from './setupRules';
 
 type StepId = 'profil' | 'outlet' | 'layanan' | 'kapster' | 'kasir' | 'ringkasan';
 const STEPS: { id: StepId; title: string; hint: string; optional?: boolean }[] = [
@@ -53,17 +53,7 @@ export function Onboarding({
   const { org } = data;
   const progress = setupProgress(data);
   const [params, setParams] = useSearchParams();
-  const [initial] = useState<StepId>(() =>
-    startAtSummary
-      ? 'ringkasan'
-      : !progress.outlet
-        ? 'outlet'
-        : !progress.services
-          ? 'layanan'
-          : !progress.barbers
-            ? 'kapster'
-            : 'ringkasan',
-  );
+  const [initial] = useState<StepId>(() => (startAtSummary ? 'ringkasan' : nextSetupStep(progress)));
   const current = (STEPS.find((s) => s.id === params.get('langkah'))?.id ?? initial) as StepId;
   const index = STEPS.findIndex((s) => s.id === current);
   const [save, setSave] = useState<SaveState>({ state: 'idle' });
