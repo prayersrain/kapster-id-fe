@@ -63,7 +63,7 @@ test('overlapping bookings sit side by side and separate clusters reset the lane
 
 import { createRequire } from 'node:module';
 import { customerErrors, normalizePhone } from '../apps/web/src/bookingRules.ts';
-import { setupProgress } from '../apps/web/src/setupRules.ts';
+import { setupBanner, setupProgress } from '../apps/web/src/setupRules.ts';
 const require = createRequire(import.meta.url);
 
 test('walk-in and public booking accept exactly the customers the API accepts', () => {
@@ -139,4 +139,82 @@ test('setup readiness mirrors the approval rule for every active outlet', () => 
     setupProgress({ ...base, org: { ...org, status: 'pending' }, services: [], barbers: [] }).canSubmit,
     false,
   );
+});
+
+test('setup banner follows the business status and only links to onboarding steps', () => {
+  const outlet = { id: 'a', name: 'Outlet a', active: 1, published: 0 };
+  const complete = {
+    org: { name: 'Barber', slug: 'barber', status: 'draft' },
+    team: [],
+    outlets: [outlet],
+    services: [{ outletId: 'a', active: 1 }],
+    barbers: [{ outletId: 'a', active: 1 }],
+  };
+  const withStatus = (status, patch = {}) =>
+    setupBanner({ ...complete, ...patch, org: { ...complete.org, status } });
+  const summary = (view) => [
+    view.badge,
+    view.title,
+    view.action,
+    view.to,
+    view.stages.map((s) => `${s.label}:${s.state}:${s.note}`).join(' | '),
+  ];
+
+  assert.deepEqual(summary(withStatus('draft', { services: [] })), [
+    'Belum selesai',
+    'Siapkan bisnis untuk booking pertama',
+    'Lanjutkan setup',
+    '/owner/onboarding?langkah=layanan',
+    'Data bisnis:active:Lengkapi setup | Review Admin:next:Belum diajukan | Publikasi:next:Setelah disetujui',
+  ]);
+  assert.equal(
+    withStatus('draft', { outlets: [], services: [], barbers: [] }).to,
+    '/owner/onboarding?langkah=outlet',
+  );
+  assert.equal(withStatus('draft', { barbers: [] }).to, '/owner/onboarding?langkah=kapster');
+  assert.equal(withStatus('draft').to, '/owner/onboarding?langkah=ringkasan');
+  assert.equal(withStatus('draft').stages[0].note, 'Siap diajukan');
+
+  assert.deepEqual(summary(withStatus('pending')), [
+    'Menunggu review',
+    'Pengajuan Anda sedang ditinjau',
+    'Lihat pengajuan',
+    '/owner/onboarding?langkah=ringkasan',
+    'Data bisnis:done:Sudah dikirim | Review Admin:active:Dalam proses | Publikasi:next:Setelah disetujui',
+  ]);
+
+  // A revision is never shown as an approved review.
+  const rejected = withStatus('rejected');
+  assert.deepEqual(summary(rejected), [
+    'Perlu revisi',
+    'Ada data yang perlu diperbaiki',
+    'Perbaiki setup',
+    '/owner/onboarding?langkah=ringkasan',
+    'Data bisnis:active:Perlu diperbaiki | Review Admin:next:Ajukan ulang | Publikasi:next:Setelah disetujui',
+  ]);
+  assert.equal(rejected.tone, 'attention');
+
+  assert.deepEqual(summary(withStatus('approved')), [
+    'Disetujui',
+    'Bisnis siap menerima booking',
+    'Terbitkan booking',
+    '/owner/onboarding?langkah=ringkasan',
+    'Data bisnis:done:Lengkap | Review Admin:done:Disetujui | Publikasi:active:Siap diterbitkan',
+  ]);
+  assert.equal(withStatus('approved', { barbers: [] }).stages[2].note, 'Lengkapi outlet dulu');
+  // Booking is live: the banner is hidden.
+  assert.equal(withStatus('approved', { outlets: [{ ...outlet, published: 1 }] }), null);
+
+  // Suspended: no publish invitation, only the status in the summary.
+  const suspended = withStatus('suspended');
+  assert.equal(suspended.badge, 'Ditangguhkan');
+  assert.equal(suspended.to, '/owner/onboarding?langkah=ringkasan');
+  assert.doesNotMatch(`${suspended.action} ${suspended.title}`, /terbit/i);
+  assert.equal(withStatus('archived'), null);
+
+  for (const status of ['draft', 'pending', 'rejected', 'approved', 'suspended']) {
+    const view = withStatus(status);
+    assert.equal(view.stages.filter((s) => s.state === 'active').length, 1, status);
+    assert.match(view.to, /^\/owner\/onboarding\?langkah=/);
+  }
 });

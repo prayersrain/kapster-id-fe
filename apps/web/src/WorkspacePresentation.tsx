@@ -4,7 +4,7 @@ import { AppData, dayLabel, Entity, User, labels, rupiah, shortDate, today } fro
 import { Badge, Card, Empty, Table, exportCsv } from './ui';
 import { Glyph } from './Glyph';
 import { calendarLanes, cardHeight } from './calendarLanes';
-import { setupProgress } from './setupRules';
+import { setupBanner } from './setupRules';
 import { Logo } from '../../../components/ui/Logo';
 import o from '../../../components/owner/OwnerDashboard.module.css';
 import c from '../../../components/cashier/CashierDashboard.module.css';
@@ -1014,50 +1014,50 @@ export function CalendarView({
   );
 }
 export function SetupBanner({ data }: { data: AppData }) {
-  const progress = setupProgress(data);
-  if (data.org.status === 'approved' && progress.published) return null;
-  const checks = [
-    progress.profile,
-    progress.outlet,
-    progress.services,
-    progress.barbers,
-    ['pending', 'approved'].includes(data.org.status),
-    progress.published,
-  ];
-  const done = checks.filter(Boolean).length;
-  const title =
-    data.org.status === 'approved'
-      ? 'Terbitkan halaman booking Anda'
-      : data.org.status === 'pending'
-        ? 'Bisnis sedang direview Admin'
-        : data.org.status === 'rejected'
-          ? 'Admin meminta revisi setup'
-          : 'Lengkapi setup bisnis Anda';
+  const view = setupBanner(data);
+  if (!view) return null;
   return (
-    <section className={o.onboardingBanner}>
-      <div className={o.onboardingProgress}>
-        <strong>{done}</strong>
-        <span>
-          / {checks.length} langkah
-          <br />
-          selesai
-        </span>
-      </div>
-      <div className={o.onboardingCopy}>
-        <span className={o.onboardingKicker}>SETUP AKUN</span>
-        <h2>{title}</h2>
-        <p>Selesaikan onboarding agar booking dapat dipublikasikan dan tim siap bekerja.</p>
-        <div className={o.onboardingTrack}>
-          <span style={{ width: `${(done / checks.length) * 100}%` }} />
+    <section className={`setup-status is-${view.tone}`} aria-labelledby="setup-status-title">
+      <div className="setup-status-main">
+        <div className="setup-status-eyebrow">
+          <span className="setup-status-label">Setup bisnis</span>
+          <span className="setup-status-badge">
+            <Glyph
+              name={view.tone === 'attention' ? 'alert' : view.tone === 'approved' ? 'star' : 'clock'}
+              size={13}
+            />
+            {view.badge}
+          </span>
+        </div>
+        <div className="setup-status-content">
+          <div className="setup-status-copy">
+            <h2 id="setup-status-title">{view.title}</h2>
+            <p>{view.description}</p>
+          </div>
+          <Link className="setup-status-action" to={view.to}>
+            <span>{view.action}</span>
+            <Glyph name="arrow" size={15} />
+          </Link>
         </div>
       </div>
-      <Link
-        className={o.onboardingAction}
-        to={data.org.status === 'draft' ? '/owner/onboarding' : '/owner/onboarding?langkah=ringkasan'}
-      >
-        {data.org.status === 'approved' ? 'Terbitkan booking' : 'Lanjutkan setup'}{' '}
-        <Glyph name="arrow" size={16} />
-      </Link>
+      <ol className="setup-status-stages" aria-label="Tahapan aktivasi bisnis">
+        {view.stages.map((stage, i) => (
+          <li
+            key={stage.label}
+            className="setup-status-stage"
+            data-state={stage.state}
+            aria-current={stage.state === 'active' ? 'step' : undefined}
+          >
+            <span className="setup-status-number" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span className="setup-status-stage-text">
+              <strong>{stage.label}</strong>
+              <small>{stage.note}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
