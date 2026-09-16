@@ -3,11 +3,17 @@
 
 # Next.js
 /.next/
+**/dist/
+/.local/
+*.sqlite*
+/test-results/
 /out/
 
 # Build dan testing
 /dist/
 /coverage/
+/playwright-report/
+/blob-report/
 
 # Environment dan rahasia
 .env
