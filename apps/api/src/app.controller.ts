@@ -105,31 +105,55 @@ export class AppController {
   @Patch('org') editOrg(@Req() req: AuthRequest, @Body() body: unknown) {
     role(req.user, 'owner');
     const data = parse(
-      z.object({
-        slug: z
-          .string()
-          .trim()
-          .toLowerCase()
-          .regex(
-            /^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])$/,
-            'Gunakan 3–48 huruf kecil, angka, atau tanda hubung.',
-          ),
-      }),
+      z
+        .object({
+          name: text.optional(),
+          slug: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .regex(
+              /^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])$/,
+              'Gunakan 3–48 huruf kecil, angka, atau tanda hubung.',
+            )
+            .optional(),
+        })
+        .refine((v) => v.name !== undefined || v.slug !== undefined, 'Isi nama bisnis atau link booking.'),
       body,
     );
-    if (slugify(data.slug) !== data.slug || reservedSlugs.has(data.slug))
-      throw new BadRequestException('Link booking tidak dapat memakai nama tersebut.');
     return transaction(() => {
-      // A link that was ever published may already be shared; unpublishing later does not make it safe to change.
-      if (one('SELECT publishedAt FROM orgs WHERE id=?', req.user.orgId)?.publishedAt)
-        throw new ConflictException(
-          'Link booking terkunci karena sudah pernah diterbitkan dan mungkin sudah dibagikan ke customer.',
-        );
-      if (one('SELECT id FROM orgs WHERE slug=? AND id!=?', data.slug, req.user.orgId))
-        throw new ConflictException('Link booking sudah dipakai bisnis lain. Coba nama lain.');
-      run('UPDATE orgs SET slug=? WHERE id=?', data.slug, req.user.orgId);
-      audit(req.user, 'org.slug_updated', req.user.orgId, data.slug);
-      return { ok: true, message: `Link booking diperbarui menjadi /booking/${data.slug}.` };
+      const org = one('SELECT * FROM orgs WHERE id=?', req.user.orgId)!;
+      const changed: string[] = [];
+      if (data.name !== undefined && data.name !== org.name) {
+        // The Admin reviews the business under its submitted name; renaming after that bypasses review.
+        if (!['draft', 'rejected'].includes(org.status))
+          throw new ConflictException(
+            'Nama bisnis hanya bisa diubah sebelum diajukan atau saat diminta revisi.',
+          );
+        run('UPDATE orgs SET name=? WHERE id=?', data.name, req.user.orgId);
+        audit(req.user, 'org.renamed', req.user.orgId, data.name);
+        changed.push('nama bisnis');
+      }
+      if (data.slug !== undefined && data.slug !== org.slug) {
+        if (slugify(data.slug) !== data.slug || reservedSlugs.has(data.slug))
+          throw new BadRequestException('Link booking tidak dapat memakai nama tersebut.');
+        // A link that was ever published may already be shared; unpublishing later does not make it safe to change.
+        if (org.publishedAt)
+          throw new ConflictException(
+            'Link booking terkunci karena sudah pernah diterbitkan dan mungkin sudah dibagikan ke customer.',
+          );
+        if (one('SELECT id FROM orgs WHERE slug=? AND id!=?', data.slug, req.user.orgId))
+          throw new ConflictException('Link booking sudah dipakai bisnis lain. Coba nama lain.');
+        run('UPDATE orgs SET slug=? WHERE id=?', data.slug, req.user.orgId);
+        audit(req.user, 'org.slug_updated', req.user.orgId, data.slug);
+        changed.push('link booking');
+      }
+      return {
+        ok: true,
+        message: changed.length
+          ? `Profil bisnis tersimpan (${changed.join(' dan ')}).`
+          : 'Tidak ada perubahan.',
+      };
     });
   }
   @Patch('outlets/:id') editOutlet(

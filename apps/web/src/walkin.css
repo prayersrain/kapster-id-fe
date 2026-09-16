@@ -1,0 +1,507 @@
+/* Cashier walk-in POS. Lives inside the dashboard shell; switches layout by its own width. */
+.walkin {
+  --pos-ink: #17191c;
+  --pos-muted: #5f6776;
+  --pos-line: #e7e3dc;
+  --pos-gold: #a8732d;
+  container-type: inline-size;
+  min-width: 0;
+}
+.walkin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+/* 840px keeps two columns on a 1024px landscape tablet with the icon rail. */
+@container (min-width: 840px) {
+  .walkin-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+  .walkin-summary {
+    position: sticky;
+    top: 0;
+  }
+  .walkin-bar {
+    display: none !important;
+  }
+}
+.walkin-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Context row */
+.walkin-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--pos-line);
+  border-radius: 14px;
+  background: #fff;
+}
+.walkin-outlet {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pos-gold);
+}
+.walkin-outlet small,
+.walkin-outlet strong {
+  display: block;
+}
+.walkin-outlet small {
+  color: var(--pos-muted);
+  font-size: 11px;
+}
+.walkin-outlet strong {
+  color: var(--pos-ink);
+  font-size: 14px;
+}
+.walkin-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.restored-workspace .walkin-dates button,
+.walkin-dates label {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #ddd8cf;
+  border-radius: 999px;
+  color: var(--pos-ink);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.walkin-dates label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 6px;
+}
+.walkin-dates label span {
+  color: var(--pos-muted);
+  font-weight: 500;
+}
+.restored-workspace .walkin-dates input {
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+}
+.restored-workspace .walkin-dates button[aria-pressed='true'],
+.walkin-dates label.is-active {
+  border-color: var(--pos-ink);
+  color: #fff;
+  background: var(--pos-ink);
+}
+.walkin-dates label.is-active span,
+.restored-workspace .walkin-dates label.is-active input {
+  color: #fff;
+  color-scheme: dark;
+}
+
+/* Sections */
+.walkin-section {
+  padding: 16px;
+  border: 1px solid var(--pos-line);
+  border-radius: 16px;
+  background: #fff;
+}
+.walkin-section > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.walkin-section h2 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.walkin-step {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #f2d7a8;
+  background: var(--pos-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.restored-workspace .walkin-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #ddd8cf;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+.walkin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.restored-workspace .walkin-tile {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 96px;
+  padding: 14px 44px 14px 14px;
+  border: 1px solid #e2ddd4;
+  border-radius: 14px;
+  color: var(--pos-ink);
+  background: #fff;
+  text-align: left;
+}
+.restored-workspace .walkin-tile:hover:not(:disabled) {
+  border-color: #c9a26a;
+  background: #fffbf4;
+}
+.restored-workspace .walkin-tile[aria-pressed='true'] {
+  border-color: var(--pos-gold);
+  background: #fbf3e6;
+  box-shadow: inset 0 0 0 1px var(--pos-gold);
+}
+.walkin-tile strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.walkin-tile small {
+  color: var(--pos-muted);
+  font-size: 12px;
+}
+.walkin-tile b {
+  margin-top: 6px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+/* Selection is shown as a ring that fills with a dot, never a tick. */
+.walkin-marker {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #cfc7b9;
+  border-radius: 50%;
+  background: #fff;
+}
+.walkin-tile[aria-pressed='true'] .walkin-marker {
+  border-color: var(--pos-gold);
+}
+.walkin-tile[aria-pressed='true'] .walkin-marker::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pos-gold);
+}
+.restored-workspace .walkin-barber {
+  grid-template-columns: 40px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  min-height: 78px;
+}
+.walkin-barber strong,
+.walkin-barber small {
+  grid-column: 2;
+}
+.walkin-avatar {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #f2d7a8;
+  background: var(--pos-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.walkin-barber small.is-open {
+  color: #1d6537;
+  font-weight: 600;
+}
+.restored-workspace .walkin-tile:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  background: #faf9f6;
+}
+.walkin-tile.is-unavailable .walkin-avatar {
+  background: #9aa0a8;
+}
+.walkin-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed #d9d4ca;
+  border-radius: 12px;
+  color: var(--pos-muted);
+  font-size: 13px;
+}
+.walkin-times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+.restored-workspace .walkin-times button {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 52px;
+  padding: 4px;
+  border: 1px solid #e2ddd4;
+  border-radius: 12px;
+  color: var(--pos-ink);
+  background: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.walkin-times small {
+  color: #1d6537;
+  font-size: 10px;
+  font-weight: 600;
+}
+.restored-workspace .walkin-times button[aria-pressed='true'] {
+  border-color: var(--pos-ink);
+  color: #fff;
+  background: var(--pos-ink);
+}
+.walkin-times button[aria-pressed='true'] small {
+  color: #f2d7a8;
+}
+
+/* Summary */
+.walkin-summary {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--pos-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(23, 25, 28, 0.05);
+}
+.walkin-summary h2 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+.walkin-form {
+  display: grid;
+  gap: 12px;
+}
+.walkin-field {
+  display: grid;
+  gap: 6px;
+}
+.walkin-field label {
+  font-size: 12px;
+  font-weight: 700;
+}
+.restored-workspace .walkin-field input {
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #d9dde3;
+  border-radius: 10px;
+  font-size: 15px;
+}
+.restored-workspace .walkin-field input:focus {
+  border-color: #b98543;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(185, 133, 67, 0.18);
+}
+.restored-workspace .walkin-field.has-error input {
+  border-color: #d64545;
+}
+.walkin-field .field-error {
+  color: #b3261e;
+  font-size: 12px;
+  font-weight: 600;
+}
+.walkin-lines,
+.walkin-result dl {
+  margin: 4px 0 0;
+}
+.walkin-lines > div,
+.walkin-result dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #ebe6dd;
+  font-size: 13px;
+}
+.walkin-lines dt,
+.walkin-result dt {
+  color: var(--pos-muted);
+}
+.walkin-lines dd,
+.walkin-result dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.walkin-lines em {
+  color: #9aa0a8;
+  font-style: normal;
+  font-weight: 500;
+}
+.walkin-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--pos-ink);
+}
+.walkin-total span {
+  color: #cfc9bd;
+  font-size: 13px;
+}
+.walkin-total strong {
+  color: #f2d7a8;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.walkin-note {
+  margin: 0;
+  color: var(--pos-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.walkin-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #f0c9c4;
+  border-radius: 10px;
+  color: #a8261c;
+  background: #fff4f2;
+  font-size: 13px;
+}
+.restored-workspace .walkin-summary .primary,
+.restored-workspace .walkin-bar .primary {
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  color: #1a140c;
+  background: linear-gradient(135deg, #c99a59, #e3be84);
+  font-size: 15px;
+  font-weight: 800;
+}
+.restored-workspace .walkin-summary .primary:hover:not(:disabled) {
+  background: #e3be84;
+}
+.walkin-result {
+  display: grid;
+  gap: 10px;
+}
+.walkin-eyebrow {
+  color: var(--pos-gold);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.walkin-result h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.walkin-result > p {
+  margin: 0;
+  color: var(--pos-muted);
+}
+.restored-workspace .walkin-result .ghost-button {
+  min-height: 46px;
+  border: 1px solid #d9d4ca;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.walkin-blocked {
+  padding: 22px;
+  border: 1px solid var(--pos-line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+/* Narrow: summary follows the selections and a bottom bar keeps the total and action in reach */
+.walkin-bar {
+  position: sticky;
+  z-index: 30;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--pos-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -8px 24px rgba(23, 25, 28, 0.08);
+}
+.walkin-bar > div {
+  flex: 1;
+  min-width: 0;
+}
+.walkin-bar strong,
+.walkin-bar small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.walkin-bar strong {
+  font-size: 16px;
+}
+.walkin-bar small {
+  color: var(--pos-muted);
+  font-size: 12px;
+}
+.restored-workspace .walkin-bar .primary {
+  padding: 0 18px;
+}
+@media (max-width: 860px) {
+  .walkin-bar {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+}
+/* The cashier workspace adds 80px bottom padding on phones, which already clears the bottom nav. */
+@media (max-width: 620px) {
+  .walkin-bar {
+    bottom: 0;
+  }
+}
+@media (max-width: 520px) {
+  .walkin-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .walkin-context {
+    align-items: stretch;
+  }
+  .walkin-dates {
+    width: 100%;
+  }
+  .walkin-bar .primary {
+    padding: 0 12px;
+    font-size: 14px;
+  }
+}

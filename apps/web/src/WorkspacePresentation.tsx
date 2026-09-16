@@ -4,11 +4,11 @@ import { AppData, dayLabel, Entity, User, labels, rupiah, shortDate, today } fro
 import { Badge, Card, Empty, Table, exportCsv } from './ui';
 import { Glyph } from './Glyph';
 import { calendarLanes, cardHeight } from './calendarLanes';
+import { setupProgress } from './setupRules';
 import { Logo } from '../../../components/ui/Logo';
 import o from '../../../components/owner/OwnerDashboard.module.css';
 import c from '../../../components/cashier/CashierDashboard.module.css';
 import a from '../../../components/admin/AdminDashboard.module.css';
-import f from '../../../components/onboarding/FlowPage.module.css';
 
 export const visualMenus = {
   owner: [
@@ -27,7 +27,7 @@ export const visualMenus = {
   cashier: [
     ['', 'Kasir', 'home'],
     ['bookings', 'Antrean', 'users'],
-    ['new', 'Booking', 'calendar'],
+    ['new', 'Walk-in', 'plus'],
     ['transactions', 'Transaksi', 'receipt'],
     ['customers', 'Pelanggan', 'customer'],
     ['shifts', 'Shift Kasir', 'wallet'],
@@ -60,7 +60,7 @@ const subtitles: Record<string, string> = {
   tenants: 'Kelola seluruh bisnis yang terdaftar di platform Kapster.id.',
   audit: 'Pantau aktivitas dan perubahan akses platform.',
   shifts: 'Kelola sesi kasir dan pastikan uang kas sesuai dengan transaksi.',
-  new: 'Catat kunjungan pelanggan dan pilih jadwal yang tersedia.',
+  new: 'Catat customer yang datang langsung, pilih kapster yang kosong, lalu masukkan ke antrean.',
 };
 export function Person({ name, detail }: { name: string; detail?: ReactNode }) {
   return (
@@ -367,7 +367,9 @@ export function PageTitle({
   children: ReactNode;
 }) {
   const title = page
-    ? visualMenus[user.role].find((v) => v[0] === page)?.[1] || 'Operasional'
+    ? page === 'new'
+      ? 'Tambah walk-in'
+      : visualMenus[user.role].find((v) => v[0] === page)?.[1] || 'Operasional'
     : user.role === 'owner'
       ? `Selamat datang, ${user.name.split(' ')[0]}!`
       : user.role === 'cashier'
@@ -1012,9 +1014,25 @@ export function CalendarView({
   );
 }
 export function SetupBanner({ data }: { data: AppData }) {
-  if (data.org.status === 'approved') return null;
-  const checks = setupChecks(data),
-    done = checks.filter((v) => v.done).length;
+  const progress = setupProgress(data);
+  if (data.org.status === 'approved' && progress.published) return null;
+  const checks = [
+    progress.profile,
+    progress.outlet,
+    progress.services,
+    progress.barbers,
+    ['pending', 'approved'].includes(data.org.status),
+    progress.published,
+  ];
+  const done = checks.filter(Boolean).length;
+  const title =
+    data.org.status === 'approved'
+      ? 'Terbitkan halaman booking Anda'
+      : data.org.status === 'pending'
+        ? 'Bisnis sedang direview Admin'
+        : data.org.status === 'rejected'
+          ? 'Admin meminta revisi setup'
+          : 'Lengkapi setup bisnis Anda';
   return (
     <section className={o.onboardingBanner}>
       <div className={o.onboardingProgress}>
@@ -1027,124 +1045,19 @@ export function SetupBanner({ data }: { data: AppData }) {
       </div>
       <div className={o.onboardingCopy}>
         <span className={o.onboardingKicker}>SETUP AKUN</span>
-        <h2>Lengkapi setup bisnis Anda</h2>
+        <h2>{title}</h2>
         <p>Selesaikan onboarding agar booking dapat dipublikasikan dan tim siap bekerja.</p>
         <div className={o.onboardingTrack}>
           <span style={{ width: `${(done / checks.length) * 100}%` }} />
         </div>
       </div>
-      <Link className={o.onboardingAction} to="/owner/onboarding">
-        Lanjutkan Setup <Glyph name="arrow" size={16} />
+      <Link
+        className={o.onboardingAction}
+        to={data.org.status === 'draft' ? '/owner/onboarding' : '/owner/onboarding?langkah=ringkasan'}
+      >
+        {data.org.status === 'approved' ? 'Terbitkan booking' : 'Lanjutkan setup'}{' '}
+        <Glyph name="arrow" size={16} />
       </Link>
     </section>
-  );
-}
-function setupChecks(data: AppData) {
-  return [
-    {
-      name: 'Verifikasi akun Owner',
-      detail: 'Email akun Anda sudah terverifikasi.',
-      done: true,
-      route: 'settings',
-    },
-    { name: 'Lengkapi profil bisnis', detail: data.org.name, done: !!data.org.name, route: 'settings' },
-    {
-      name: 'Buat outlet pertama',
-      detail: 'Tambahkan nama dan alamat outlet.',
-      done: data.outlets.length > 0,
-      route: 'outlets',
-    },
-    {
-      name: 'Tambah layanan & harga',
-      detail: 'Tentukan layanan, durasi, dan harga.',
-      done: data.services.some((v) => v.active),
-      route: 'services',
-    },
-    {
-      name: 'Tambah kapster',
-      detail: 'Daftarkan kapster yang akan melayani pelanggan.',
-      done: data.barbers.some((v) => v.active),
-      route: 'barbers',
-    },
-    {
-      name: 'Atur jadwal kapster',
-      detail: 'Lengkapi hari dan jam kerja kapster.',
-      done: data.barbers.some((v) => v.active && v.start && v.end),
-      route: 'barbers',
-    },
-    {
-      name: 'Undang kasir',
-      detail: 'Beri akses kasir untuk mengelola operasional outlet.',
-      done: data.team.some((v) => v.role === 'cashier'),
-      route: 'cashiers',
-    },
-    {
-      name: 'Kirim untuk approval',
-      detail: 'Admin akan memeriksa kesiapan bisnis Anda.',
-      done: ['pending', 'approved'].includes(data.org.status),
-      route: 'approval',
-    },
-    {
-      name: 'Terbitkan halaman booking',
-      detail: 'Aktifkan booking publik setelah bisnis disetujui.',
-      done: data.outlets.some((v) => v.published),
-      route: 'outlets',
-    },
-  ];
-}
-export function SetupPage({
-  data,
-  children,
-  approval = false,
-}: {
-  data: AppData;
-  children: ReactNode;
-  approval?: boolean;
-}) {
-  const checks = setupChecks(data),
-    done = checks.filter((v) => v.done).length;
-  return (
-    <main className={`${f.flowPage} restored-flow`}>
-      <section className={f.flowCard}>
-        <Link className={f.flowBrand} to="/owner">
-          Kapster<span>.id</span>
-        </Link>
-        <header className={f.flowHeader}>
-          <span className={f.eyebrow}>{approval ? 'REVIEW BISNIS' : 'LANGKAH 2 DARI 2 · SETUP BISNIS'}</span>
-          <h1>{approval ? 'Status pengajuan bisnis' : 'Siapkan barbershop Anda'}</h1>
-          <p>Lengkapi informasi bisnis agar pelanggan dapat booking dan tim Anda siap bekerja.</p>
-        </header>
-        <div className={f.progressLabel}>
-          <strong>Progress setup</strong>
-          <span>
-            {done} dari {checks.length} langkah selesai
-          </span>
-        </div>
-        <div className={f.progress}>
-          <i style={{ width: `${(done / checks.length) * 100}%` }} />
-        </div>
-        <div className={f.stepList}>
-          {checks.map((v, i) => (
-            <Link className={`${f.step} ${v.done ? f.stepDone : ''}`} key={v.name} to={`/owner/${v.route}`}>
-              <span className={f.stepIcon}>{i + 1}</span>
-              <span>
-                <strong>{v.name}</strong>
-                <small>{v.detail}</small>
-              </span>
-              <b>{v.done ? 'Selesai' : 'Lengkapi →'}</b>
-            </Link>
-          ))}
-        </div>
-        <div className="setup-review">{children}</div>
-        <div className={f.flowActions}>
-          <Link className={f.secondary} to="/owner">
-            Kembali ke Dashboard
-          </Link>
-          <Link className={f.primary} to="/owner/outlets">
-            Kelola Outlet →
-          </Link>
-        </div>
-      </section>
-    </main>
   );
 }

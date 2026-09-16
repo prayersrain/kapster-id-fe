@@ -8,6 +8,8 @@ import './styles.css';
 import './restored.css';
 import './interactions.css';
 import './polish.css';
+import './onboarding.css';
+import './walkin.css';
 function Home() {
   const { user, loading } = useAuth();
   return loading ? <p>Memuat…</p> : <Navigate to={user ? homeFor(user) : '/login'} replace />;

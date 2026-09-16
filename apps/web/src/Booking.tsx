@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, bookingLink, Catalog, Entity, today } from './api';
+import { bookingMaxDate } from './bookingRules';
 import { BookingDirectory, BookingMissing, BookingScreen, BookingTicket } from './BookingScreen';
 
 export function PublicBooking() {
@@ -43,22 +44,18 @@ export function PublicBooking() {
   );
 }
 
-export function Booking({
-  internal = false,
+/** Customer self-booking. Cashier walk-ins use the separate WalkIn screen. */
+function Booking({
   catalog,
-  onBooked,
   initialOutlet = '',
   loadError = '',
 }: {
-  internal?: boolean;
   catalog?: Catalog;
-  onBooked?: () => void;
   initialOutlet?: string;
   loadError?: string;
 }) {
   const [error, setError] = useState(''),
-    // Cashiers work inside one outlet, so they start directly at the service step.
-    [step, setStep] = useState(internal && initialOutlet ? 1 : 0);
+    [step, setStep] = useState(0);
   const [outletId, setOutlet] = useState(initialOutlet),
     [serviceId, setService] = useState(''),
     [barberId, setBarber] = useState('');
@@ -68,7 +65,6 @@ export function Booking({
     [loading, setLoading] = useState(false);
   const [customer, setCustomer] = useState({ name: '', phone: '' }),
     [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<Entity | null>(null);
   const navigate = useNavigate();
   useEffect(() => {
     if (!outletId || !serviceId || !barberId) return;
@@ -78,7 +74,7 @@ export function Booking({
     setLoading(true);
     setError('');
     api<{ slots: string[] }>(
-      `${internal ? 'app' : 'public'}/slots?${new URLSearchParams({ outletId, serviceId, barberId, date })}`,
+      `public/slots?${new URLSearchParams({ outletId, serviceId, barberId, date })}`,
       undefined,
       'GET',
       controller.signal,
@@ -91,26 +87,22 @@ export function Booking({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [outletId, serviceId, barberId, date, internal]);
-  const maxDate = new Date(Date.now() + 30 * 86400_000 + 7 * 3600_000).toISOString().slice(0, 10);
+  }, [outletId, serviceId, barberId, date]);
   return (
     <BookingScreen
       catalog={catalog ?? null}
       step={step}
-      firstStep={internal && initialOutlet ? 1 : 0}
       error={error || loadError}
       outletId={outletId}
       serviceId={serviceId}
       barberId={barberId}
       date={date}
-      maxDate={maxDate}
+      maxDate={bookingMaxDate()}
       time={time}
       slots={slots}
       loading={loading}
       busy={busy}
       customer={customer}
-      result={result}
-      internal={internal}
       onStep={(s) => {
         setStep(s);
         setError('');
@@ -128,19 +120,11 @@ export function Booking({
       onDate={setDate}
       onTime={setTime}
       onCustomer={setCustomer}
-      onRestart={() => {
-        setResult(null);
-        setStep(internal && initialOutlet ? 1 : 0);
-        setService('');
-        setBarber('');
-        setTime('');
-        setCustomer({ name: '', phone: '' });
-      }}
       onConfirm={async () => {
         setBusy(true);
         setError('');
         try {
-          const data = await api(`${internal ? 'app' : 'public'}/bookings`, {
+          const data = await api('public/bookings', {
             outletId,
             serviceId,
             barberId,
@@ -148,10 +132,7 @@ export function Booking({
             time,
             ...customer,
           });
-          if (internal) {
-            setResult(data);
-            onBooked?.();
-          } else navigate(`/booking/status/${data.token}`);
+          navigate(`/booking/status/${data.token}`);
         } catch (e) {
           setError((e as Error).message);
         } finally {

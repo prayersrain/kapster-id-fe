@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { bookingLink, Catalog, Entity, rupiah, shortDate, today } from './api';
 import { parseBookingLink } from './links';
 import { Badge, Empty, Form } from './ui';
+import { customerErrors } from './bookingRules';
 import { Logo } from '../../../components/ui/Logo';
 import { Glyph } from './Glyph';
 import { BookingDates } from './BookingDates';
@@ -18,48 +19,40 @@ const initials = (name = '') =>
     .toUpperCase() || 'K.';
 export function BookingFrame({
   children,
-  internal = false,
   step,
   home = '/booking',
 }: {
   children: ReactNode;
-  internal?: boolean;
   step?: number;
   home?: string;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
-  const Stage = internal ? 'div' : 'main';
   useEffect(() => {
     viewport.current?.scrollTo({ top: 0 });
   }, [step]);
   return (
-    <Stage className={`${s.bookingStage} restored-booking ${internal ? 'internal-booking' : ''}`}>
+    <main className={`${s.bookingStage} restored-booking`}>
       <div className={s.ambientOne} />
       <div className={s.ambientTwo} />
       <section className={s.phoneShell}>
         <div className={s.viewport} ref={viewport}>
           <nav className={s.topbar}>
-            {internal ? (
+            <Link to={home} aria-label="Kembali ke halaman barbershop">
               <Logo compact />
-            ) : (
-              <Link to={home} aria-label="Kembali ke halaman barbershop">
-                <Logo compact />
-              </Link>
-            )}
+            </Link>
             <span className={s.secureBadge}>
-              <Glyph name="lock" size={12} /> {internal ? 'Booking kasir' : 'Booking resmi'}
+              <Glyph name="lock" size={12} /> Booking resmi
             </span>
           </nav>
           {children}
         </div>
       </section>
-    </Stage>
+    </main>
   );
 }
 type Props = {
   catalog: Catalog | null;
   step: number;
-  firstStep: number;
   error: string;
   outletId: string;
   serviceId: string;
@@ -71,8 +64,6 @@ type Props = {
   loading: boolean;
   busy: boolean;
   customer: { name: string; phone: string };
-  result: Entity | null;
-  internal: boolean;
   onStep: (step: number) => void;
   onOutlet: (id: string) => void;
   onService: (id: string) => void;
@@ -81,7 +72,6 @@ type Props = {
   onTime: (time: string) => void;
   onCustomer: (customer: { name: string; phone: string }) => void;
   onConfirm: () => void;
-  onRestart: () => void;
 };
 export function BookingScreen(p: Props) {
   const outlet = p.catalog?.outlets.find((o) => o.id === p.outletId);
@@ -128,33 +118,13 @@ export function BookingScreen(p: Props) {
     'Konfirmasi booking · Bayar di outlet',
   ];
   return (
-    <BookingFrame
-      internal={p.internal}
-      step={p.step}
-      home={p.catalog?.org ? bookingLink(p.catalog.org.slug) : '/booking'}
-    >
-      {p.result ? (
-        <div className={s.successContent}>
-          <div className={s.successIcon}>
-            <Glyph name="receipt" size={30} />
-          </div>
-          <h1>Booking tersimpan</h1>
-          <p>
-            Booking {p.customer.name} · {shortDate(p.date)} {p.time} WIB sudah masuk ke antrean outlet.
-          </p>
-          <Link className={s.primaryButton} to={`/booking/status/${p.result.token}`}>
-            Lihat detail booking
-          </Link>
-          <button className={s.textButton} onClick={p.onRestart}>
-            Buat booking lain
-          </button>
-        </div>
-      ) : (
+    <BookingFrame step={p.step} home={p.catalog?.org ? bookingLink(p.catalog.org.slug) : '/booking'}>
+      {
         <div className={s.screen} key={p.step}>
           {p.step > 0 && (
             <header className={s.stepHeader}>
               <div className="booking-step-title">
-                {p.step > p.firstStep && (
+                {p.step > 0 && (
                   <button
                     className={s.backButton}
                     aria-label="Kembali ke langkah sebelumnya"
@@ -343,11 +313,9 @@ export function BookingScreen(p: Props) {
                       ]}
                       submit="Periksa booking"
                       onSubmit={async (values) => {
-                        if (
-                          values.name.trim().length < 2 ||
-                          !/^(?:0|62|\+62)8[\d\s-]{8,15}$/.test(values.phone)
-                        )
-                          throw new Error('Periksa nama dan nomor WhatsApp Anda.');
+                        const problems = customerErrors({ name: values.name, phone: values.phone });
+                        if (problems.name || problems.phone)
+                          throw new Error([problems.name, problems.phone].filter(Boolean).join(' '));
                         p.onCustomer({ name: values.name, phone: values.phone });
                         p.onStep(5);
                       }}
@@ -421,7 +389,7 @@ export function BookingScreen(p: Props) {
             </div>
           )}
         </div>
-      )}
+      }
     </BookingFrame>
   );
 }
