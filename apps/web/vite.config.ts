@@ -14,5 +14,12 @@ export default defineConfig({
     },
     proxy: { '/api': 'http://127.0.0.1:4000' },
   },
-  preview: { host: '127.0.0.1', port: 5173, strictPort: true, proxy: { '/api': 'http://127.0.0.1:4000' } },
+  preview: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
+    // Staging dilayani Nginx per subdomain; host tersebut harus diizinkan secara eksplisit.
+    allowedHosts: (process.env.KAPSTER_PREVIEW_HOSTS || '').split(',').filter(Boolean),
+    proxy: { '/api': 'http://127.0.0.1:4000' },
+  },
 });

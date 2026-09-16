@@ -83,7 +83,8 @@ export class PublicController {
     res.cookie('kapster_session', token, {
       httpOnly: true,
       sameSite: 'strict',
-      secure: false,
+      // Di belakang HTTPS (staging/production) cookie wajib Secure; loopback HTTP tetap false.
+      secure: process.env.KAPSTER_SECURE_COOKIE === '1',
       path: '/api',
       maxAge: 12 * 3600_000,
     });

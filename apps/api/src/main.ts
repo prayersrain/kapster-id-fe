@@ -33,13 +33,20 @@ class Errors implements ExceptionFilter {
 class AppModule {}
 
 async function bootstrap() {
-  if (process.env.NODE_ENV === 'production')
+  // Staging/production hanya boleh dijalankan dengan opt-in eksplisit. Tanpa flag ini
+  // perilaku lama dipertahankan: backend menolak start di luar lingkungan lokal.
+  if (process.env.NODE_ENV === 'production' && process.env.KAPSTER_ALLOW_HOSTED !== '1')
     throw new Error('Backend ini khusus lokal. Selesaikan konfigurasi produksi sebelum deployment.');
   seed();
   const app = await NestFactory.create(AppModule);
   app.use(helmet({ referrerPolicy: { policy: 'no-referrer' } }));
   app.use(cookieParser());
-  const allowedOrigins = new Set(['http://127.0.0.1:5173', 'http://localhost:5173']);
+  const allowedOrigins = new Set(
+    (process.env.KAPSTER_ORIGINS || 'http://127.0.0.1:5173,http://localhost:5173')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
   const rates = new Map<string, { n: number; until: number }>();
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Cache-Control', 'no-store');
