@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -311,13 +312,16 @@ test('a slow session check from before a logout does not log the user back in', 
 });
 
 test('Admin actions and internal files never exposed through web server', async ({ page, request }) => {
-  const workspace = process.cwd().replaceAll('\\', '/');
-  for (const url of [
-    `/@fs/${workspace}/.local/accounts.json`,
-    `/@fs/${workspace}/docs/design/MockupUI/booking-mockup.html`,
+  // Probe files that exist in every checkout: Vite answers a missing path with the app's index.html (200),
+  // which would say nothing about the deny rule. The accounts file is the one this test run's API wrote.
+  for (const file of [
+    resolve(process.env.E2E_DIR!, 'accounts.json'),
+    resolve('docs/design/MockupUI/booking-mockup.html'),
   ]) {
-    const response = await request.get(url);
-    expect(response.status()).toBe(403);
+    expect(existsSync(file), file).toBe(true);
+    const response = await request.get(`/@fs/${file.replaceAll('\\', '/')}`);
+    expect(response.status(), file).toBe(403);
+    expect(await response.text()).not.toContain('password');
   }
   await login(page, 'admin');
   await page.locator('aside nav').getByRole('button', { name: 'Tenants', exact: true }).click();
