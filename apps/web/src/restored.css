@@ -874,21 +874,6 @@
   font-size: 12px;
   margin: 25px 0 35px;
 }
-.restored-flow .setup-review .checklist {
-  display: none;
-}
-.restored-flow .setup-review .card {
-  margin-top: 22px;
-  box-shadow: none;
-  padding: 15px;
-  font-size: 12px;
-}
-.restored-flow .setup-review .card-head {
-  display: none;
-}
-.restored-flow .primary {
-  background: #28221c;
-}
 .restored-booking [class*='stepContent'],
 .restored-booking [class*='homeContent'] {
   padding-bottom: 96px;
@@ -1036,19 +1021,6 @@
     justify-content: flex-start;
     font-size: 8px;
   }
-}
-.internal-booking {
-  min-height: 0;
-  padding: 22px;
-  border-radius: 14px;
-}
-.internal-booking [class*='phoneShell'] {
-  height: 780px;
-  max-height: none;
-}
-.walk-in-workspace {
-  max-width: 1050px;
-  margin: auto;
 }
 @media (max-width: 1400px) {
   .restored-workspace [class*='overviewLayout'] {
@@ -1269,15 +1241,6 @@
   }
   .role-cashier .live-workspace {
     padding-bottom: 80px;
-  }
-  .internal-booking {
-    padding: 0;
-  }
-  .internal-booking [class*='phoneShell'] {
-    width: 100%;
-    height: 780px;
-    min-height: 690px;
-    border-radius: 12px;
   }
   .restored-workspace .table-scroll {
     overscroll-behavior-inline: contain;

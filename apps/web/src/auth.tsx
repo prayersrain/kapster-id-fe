@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Navigate, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, User } from './api';
 import { Form, FieldSpec } from './ui';
@@ -10,12 +10,23 @@ export const useAuth = () => useContext(AuthContext);
 export const homeFor = (user: User) =>
   user.role === 'admin' ? '/admin' : user.role === 'cashier' ? '/kasir' : '/owner';
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null),
+  const [user, setUserState] = useState<User | null>(null),
     [loading, setLoading] = useState(true);
+  // Set once login, logout, or an expired session has decided who is signed in. From then on the
+  // page-load session check is outdated whatever it answers: a late 401 must not undo a login, and a
+  // late 200 (sent with the old cookie) must not undo a logout.
+  const decided = useRef(false);
+  const setUser = (next: User | null) => {
+    decided.current = true;
+    setUserState(next);
+    setLoading(false);
+  };
   useEffect(() => {
     api<User>('auth/me')
-      .then(setUser)
-      .catch(() => setUser(null))
+      .then((me) => {
+        if (!decided.current) setUserState(me);
+      })
+      .catch(() => {})
       .finally(() => setLoading(false));
     const expire = () => setUser(null);
     window.addEventListener('kapster-session-expired', expire);

@@ -57,7 +57,7 @@ test('all restored screens render on desktop and phone without page overflow', a
       await page.setViewportSize(size);
       for (const route of routes[role]) {
         await page.goto(`${base}/${route}`);
-        await expect(page.locator('.live-workspace h1, .restored-flow h1')).toBeVisible();
+        await expect(page.locator('.live-workspace h1, .ob-card:not([hidden]) h1')).toBeVisible();
         await expect(page.getByText(/Memuat data (operasional|platform)/)).toHaveCount(0);
         await expect(page.getByRole('alert')).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

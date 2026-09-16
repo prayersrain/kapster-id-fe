@@ -102,6 +102,8 @@ export type FieldSpec = {
   /** Presets that set several fields at once, e.g. a start and end time. */
   presets?: { label: string; values: Record<string, FieldValue> }[];
   wide?: boolean;
+  /** Shown but not editable, e.g. a booking link that is locked after publishing. */
+  readOnly?: boolean;
 };
 const initial = (f: FieldSpec): FieldValue => {
   if (f.value !== undefined) return f.value;
@@ -136,6 +138,10 @@ export function Form({
   onCancel,
   tone,
   preview,
+  draft,
+  onDraft,
+  id,
+  actions = true,
 }: {
   fields: FieldSpec[];
   onSubmit: (values: Record<string, any>) => Promise<unknown>;
@@ -144,14 +150,28 @@ export function Form({
   onCancel?: () => void;
   tone?: 'danger';
   preview?: (values: Record<string, any>) => ReactNode;
+  /**
+   * Unsaved input kept by the parent, so it survives the form being unmounted (e.g. leaving a step).
+   * `onDraft` receives the current input while it differs from the saved field values, otherwise null.
+   */
+  draft?: Record<string, FieldValue>;
+  onDraft?: (values: Record<string, FieldValue> | null) => void;
+  /** Lets a button elsewhere (e.g. a sticky step footer) submit this form via `form={id}`. */
+  id?: string;
+  actions?: boolean;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [touched, setTouched] = useState(false);
-  const [values, setValues] = useState<Record<string, FieldValue>>(() =>
+  const startValues = useRef<Record<string, FieldValue>>(
     Object.fromEntries(fields.map((f) => [f.key, initial(f)])),
   );
+  const [values, setValues] = useState<Record<string, FieldValue>>(() => draft ?? startValues.current);
   const set = (patch: Record<string, FieldValue>) => setValues((v) => ({ ...v, ...patch }));
+  const dirty = JSON.stringify(values) !== JSON.stringify(startValues.current);
+  useEffect(() => {
+    onDraft?.(dirty ? values : null);
+  }, [values]);
   const errors = Object.fromEntries(fields.map((f) => [f.key, fieldError(f, values[f.key])]));
   const clockOrder = fields.filter((f) => f.type === 'clock');
   if (clockOrder.length === 2 && !errors[clockOrder[1].key]) {
@@ -194,7 +214,7 @@ export function Form({
     }
   }
   return (
-    <form onSubmit={send} className="form" noValidate>
+    <form onSubmit={send} className="form" id={id} noValidate>
       <fieldset disabled={busy}>
         <div className="form-grid">
           {fields.map((f) => (
@@ -215,20 +235,22 @@ export function Form({
             {error}
           </p>
         )}
-        <div className="form-actions">
+        <div className="form-actions" hidden={!actions && !preview}>
           {preview && <div className="form-preview">{preview(values)}</div>}
-          {onCancel && (
+          {actions && onCancel && (
             <button type="button" className="ghost-button" onClick={onCancel}>
               Batal
             </button>
           )}
-          <button
-            className={`primary ${tone === 'danger' ? 'danger' : ''}`}
-            type="submit"
-            aria-label={busy ? 'Menyimpan…' : submit}
-          >
-            {busy ? 'Menyimpan…' : submit}
-          </button>
+          {actions && (
+            <button
+              className={`primary ${tone === 'danger' ? 'danger' : ''}`}
+              type="submit"
+              aria-label={busy ? 'Menyimpan…' : submit}
+            >
+              {busy ? 'Menyimpan…' : submit}
+            </button>
+          )}
         </div>
       </fieldset>
     </form>
@@ -360,6 +382,7 @@ function Field({
         min={f.min}
         max={f.max}
         placeholder={f.placeholder}
+        readOnly={f.readOnly}
         maxLength={f.type === 'password' ? 128 : 500}
         autoComplete={f.type === 'password' ? 'new-password' : undefined}
         onChange={(e) => onChange(f.type === 'number' ? e.target.value.replace(/\D/g, '') : e.target.value)}

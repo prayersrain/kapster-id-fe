@@ -131,7 +131,6 @@ export function ManagementView({
       ['Rata-rata Transaksi', rupiah(payments.length ? revenue / payments.length : 0)],
     ],
   };
-  if (page === 'new') return <div className="walk-in-workspace">{children}</div>;
   if (page === 'subscription')
     return (
       <div className={o.settingsLayout}>

@@ -19,7 +19,7 @@ import {
   Toast,
   ToastView,
 } from './ui';
-import { Booking } from './Booking';
+import { WalkIn } from './WalkIn';
 import {
   WorkspaceShell,
   PageTitle,
@@ -27,13 +27,21 @@ import {
   BookingList,
   CalendarView,
   SetupBanner,
-  SetupPage,
 } from './WorkspacePresentation';
+import { Onboarding, prefersDashboard } from './Onboarding';
 import { AdminPresentation } from './AdminPresentation';
 import { ManagementView } from './ManagementPresentation';
 import { CashierQueue, CashierShift } from './CashierPresentation';
 import { OutletsPresentation } from './OutletsPresentation';
 import { RescheduleForm } from './Dialogs';
+import {
+  barberFields,
+  inviteFields,
+  moneyField as money,
+  outletFields,
+  schedulePreview,
+  serviceFields,
+} from './setupFields';
 
 type Values = Record<string, any>;
 type Dialog = {
@@ -60,15 +68,6 @@ const reasonField = (suggestions: string[], label = 'Alasan'): FieldSpec => ({
   suggestions,
   help: 'Minimal 5 karakter. Tercatat di riwayat audit.',
 });
-const money = (key: string, label: string, value = 0, extra: Partial<FieldSpec> = {}): FieldSpec => ({
-  key,
-  label,
-  type: 'money',
-  min: 0,
-  max: 100000000,
-  value,
-  ...extra,
-});
 const options = (items: Entity[]) => items.map((i) => ({ value: i.id, label: i.name }));
 const difference = (amount: number, zero: string, plus: string, minus: string) =>
   amount === 0 ? zero : `${amount > 0 ? plus : minus} ${rupiah(Math.abs(amount))}`;
@@ -88,15 +87,18 @@ export function Workspace() {
   const [from, setFrom] = useState(today()),
     [to, setTo] = useState(today());
   const [reloading, setReloading] = useState(false);
+  /** Resolves false when the read failed, so callers can tell stale data from fresh data. */
   const reload = useCallback(async () => {
-    if (!user) return;
+    if (!user) return false;
     setReloading(true);
     try {
       if (user.role === 'admin') setAdmin((await api('admin/data')) as any);
       else setData(await api<AppData>('app/data'));
       setError('');
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setReloading(false);
     }
@@ -111,6 +113,17 @@ export function Workspace() {
     setMenu(false);
     setSearch('');
   }, [location.pathname]);
+  // A brand-new business has nothing to operate yet, so its first visit goes straight to setup.
+  useEffect(() => {
+    if (
+      user?.role === 'owner' &&
+      location.pathname === '/owner' &&
+      data?.org.status === 'draft' &&
+      !data.outlets.length &&
+      !prefersDashboard()
+    )
+      navigate('/owner/onboarding', { replace: true });
+  }, [user, data, location.pathname, navigate]);
   if (!user) return null;
   const base = homeFor(user),
     page = location.pathname.slice(base.length).replace(/^\//, '') || '';
@@ -423,61 +436,6 @@ export function Workspace() {
       </Card>
     );
   }
-  function setupPanel() {
-    const checks = [
-      ['Outlet pertama', (data?.outlets.length ?? 0) > 0, 'outlets'],
-      ['Layanan dan harga', (data?.services.filter((s) => s.active).length ?? 0) > 0, 'services'],
-      ['Kapster dan jadwal', (data?.barbers.filter((b) => b.active).length ?? 0) > 0, 'barbers'],
-      ['Undang kasir', (data?.team.filter((t) => t.role === 'cashier').length ?? 0) > 0, 'cashiers'],
-    ];
-    return (
-      <Card title="Setup bisnis">
-        <p>Lengkapi profil operasional, ajukan review, lalu terbitkan halaman booking dari menu Outlet.</p>
-        <div className="checklist">
-          {checks.map(([label, ok, route]) => (
-            <Link key={String(label)} to={`${base}/${route}`}>
-              <span>{ok ? '●' : '○'}</span>
-              <strong>{String(label)}</strong>
-              <small>{ok ? 'Tersimpan' : 'Lengkapi →'}</small>
-            </Link>
-          ))}
-        </div>
-        <p>
-          Status bisnis: <Badge value={data!.org.status} />
-        </p>
-        {data!.org.reason && <p className="notice">Catatan Admin: {data!.org.reason}</p>}
-        {['draft', 'rejected'].includes(data!.org.status) && (
-          <button
-            className="primary"
-            onClick={() =>
-              open({
-                title: 'Kirim bisnis untuk review',
-                description:
-                  'Admin platform akan memeriksa outlet, layanan, dan kapster Anda. Data tetap bisa dilihat selama menunggu.',
-                endpoint: 'app/approval',
-                summary: [
-                  ['Bisnis', data!.org.name],
-                  ['Outlet', `${data!.outlets.length} outlet`],
-                  ['Layanan aktif', `${data!.services.filter((s) => s.active).length} layanan`],
-                  ['Kapster aktif', `${data!.barbers.filter((b) => b.active).length} kapster`],
-                ],
-                submit: 'Kirim untuk review',
-                success: 'Pengajuan terkirim. Status bisnis sekarang menunggu review Admin.',
-              })
-            }
-          >
-            Ajukan approval
-          </button>
-        )}
-        {data!.org.status === 'approved' && (
-          <p className="success">
-            Bisnis disetujui. Aktifkan link booking melalui menu Outlet. Subscription belum ditagihkan dalam
-            pengujian lokal.
-          </p>
-        )}
-      </Card>
-    );
-  }
   const editSlug = () =>
     open({
       title: 'Ubah link booking',
@@ -542,20 +500,12 @@ export function Workspace() {
         return <CalendarView data={data} bookings={bookings} actions={bookingActions} />;
       case 'new':
         return activeShift ? (
-          <Booking
-            internal
-            initialOutlet={activeShift.outletId}
-            catalog={{
-              outlets: data.outlets.filter((o) => o.id === activeShift.outletId),
-              services: data.services.filter((s) => s.active),
-              barbers: data.barbers.filter((b) => b.active),
-              org: { name: data.org.name, slug: data.org.slug },
-            }}
-            onBooked={() => void reload()}
-          />
+          <WalkIn data={data} user={user!} shift={activeShift} onBooked={() => void reload()} />
         ) : (
           <Card title="Buka shift terlebih dahulu">
-            <p>Booking kasir dan penerimaan tunai terikat pada shift outlet.</p>
+            <p>
+              Walk-in, pembayaran tunai, dan antrean outlet selalu tercatat pada shift yang sedang dibuka.
+            </p>
             <button className="primary" onClick={openShift}>
               Buka shift
             </button>
@@ -572,22 +522,7 @@ export function Workspace() {
                 description:
                   'Outlet baru belum tampil di halaman booking. Tambahkan layanan dan kapster, lalu terbitkan dari tombol Edit outlet.',
                 endpoint: 'app/outlets',
-                fields: [
-                  {
-                    key: 'name',
-                    label: 'Nama outlet',
-                    minLength: 2,
-                    placeholder: 'Contoh: Garasi Barber Kemang',
-                    wide: true,
-                  },
-                  {
-                    key: 'address',
-                    label: 'Alamat',
-                    type: 'textarea',
-                    minLength: 2,
-                    placeholder: 'Jalan, nomor, kecamatan, kota',
-                  },
-                ],
+                fields: outletFields(),
                 submit: 'Tambah outlet',
                 success: (_, v) => `${v.name} ditambahkan.`,
               })
@@ -599,8 +534,7 @@ export function Workspace() {
                 endpoint: `app/outlets/${outlet.id}`,
                 method: 'PATCH',
                 fields: [
-                  { key: 'name', label: 'Nama outlet', value: outlet.name, minLength: 2, wide: true },
-                  { key: 'address', label: 'Alamat', type: 'textarea', value: outlet.address, minLength: 2 },
+                  ...outletFields(outlet),
                   {
                     key: 'published',
                     label: 'Terima booking online',
@@ -619,37 +553,6 @@ export function Workspace() {
           />
         );
       case 'services': {
-        const serviceFields = (s?: Entity): FieldSpec[] => [
-          ...(s ? [] : [outletField]),
-          {
-            key: 'name',
-            label: 'Nama layanan',
-            value: s?.name,
-            minLength: 2,
-            placeholder: 'Contoh: Haircut + Wash',
-          },
-          money('price', 'Harga', s?.price ?? 0, { min: 0 }),
-          {
-            key: 'duration',
-            label: 'Durasi',
-            type: 'duration',
-            min: 5,
-            max: 240,
-            value: s?.duration ?? 45,
-            wide: true,
-          },
-          ...(s
-            ? [
-                {
-                  key: 'active',
-                  label: 'Layanan aktif',
-                  type: 'checkbox',
-                  value: !!s.active,
-                  help: 'Layanan nonaktif tidak bisa dipilih di booking baru.',
-                } as FieldSpec,
-              ]
-            : []),
-        ];
         return (
           <Card
             title="Layanan & harga"
@@ -663,7 +566,7 @@ export function Workspace() {
                     description:
                       'Durasi menentukan panjang slot booking. Sistem menambah jeda 10 menit antar booking.',
                     endpoint: 'app/services',
-                    fields: serviceFields(),
+                    fields: serviceFields(undefined, outletField),
                     submit: 'Tambah layanan',
                     success: (_, v) => `${v.name} · ${rupiah(v.price)} ditambahkan.`,
                   })
@@ -702,62 +605,6 @@ export function Workspace() {
         );
       }
       case 'barbers': {
-        const barberFields = (b?: Entity): FieldSpec[] => [
-          ...(b ? [] : [outletField]),
-          {
-            key: 'name',
-            label: 'Nama kapster',
-            value: b?.name,
-            minLength: 2,
-            placeholder: 'Contoh: Raka Pratama',
-          },
-          {
-            key: 'start',
-            label: 'Mulai kerja',
-            type: 'clock',
-            value: b?.start ?? '09:00',
-            presets: [
-              { label: '09–18', values: { start: '09:00', end: '18:00' } },
-              { label: '10–20', values: { start: '10:00', end: '20:00' } },
-              { label: '10–22', values: { start: '10:00', end: '22:00' } },
-            ],
-          },
-          { key: 'end', label: 'Selesai kerja', type: 'clock', value: b?.end ?? '18:00' },
-          {
-            key: 'days',
-            label: 'Hari kerja',
-            type: 'days',
-            value: b ? JSON.parse(b.days) : [1, 2, 3, 4, 5, 6],
-          },
-          ...(b
-            ? [
-                {
-                  key: 'active',
-                  label: 'Kapster aktif',
-                  type: 'checkbox',
-                  value: !!b.active,
-                  help: 'Kapster nonaktif tidak muncul di booking baru.',
-                } as FieldSpec,
-              ]
-            : []),
-        ];
-        const hours = (v: Values) => {
-          const span =
-            Number(v.end.slice(0, 2)) * 60 +
-            Number(v.end.slice(3)) -
-            (Number(v.start.slice(0, 2)) * 60 + Number(v.start.slice(3)));
-          return span > 0
-            ? `${Math.floor(span / 60)} jam${span % 60 ? ` ${span % 60} menit` : ''} per hari`
-            : 'Jam belum valid';
-        };
-        const schedulePreview = (v: Values) =>
-          v.days.length ? (
-            <span className="preview-ok">
-              {dayNames(v.days)} · {v.start}–{v.end} WIB · {hours(v)}
-            </span>
-          ) : (
-            <span className="preview-warn">Belum ada hari kerja dipilih</span>
-          );
         return (
           <>
             <Card
@@ -771,7 +618,7 @@ export function Workspace() {
                       title: 'Tambah kapster',
                       description: 'Slot booking dibuat otomatis dari jam dan hari kerja kapster.',
                       endpoint: 'app/barbers',
-                      fields: barberFields(),
+                      fields: barberFields(undefined, outletField),
                       preview: schedulePreview,
                       submit: 'Tambah kapster',
                       success: (_, v) => `${v.name} ditambahkan · ${dayNames(v.days)} ${v.start}–${v.end}.`,
@@ -892,11 +739,7 @@ export function Workspace() {
                       description:
                         'Kasir menerima email untuk membuat password. Pada mode lokal, email tersimpan di kotak email lokal (npm run local:mail).',
                       endpoint: 'app/team',
-                      fields: [
-                        { key: 'name', label: 'Nama', minLength: 2 },
-                        { key: 'email', label: 'Email', type: 'email' },
-                        { ...outletField, wide: true },
-                      ],
+                      fields: inviteFields(outletField),
                       submit: 'Kirim undangan',
                       success: (_, v) => `Undangan untuk ${v.email} dibuat.`,
                     })
@@ -1146,9 +989,6 @@ export function Workspace() {
           </Card>
         );
       }
-      case 'onboarding':
-      case 'approval':
-        return setupPanel();
       case 'subscription':
         return (
           <Card title="Langganan">
@@ -1253,18 +1093,31 @@ export function Workspace() {
     </Modal>
   );
   const toastView = <ToastView toast={toast} onClose={closeToast} />;
-  if (owner && data && ['onboarding', 'approval'].includes(page))
+  const logout = async () => {
+    try {
+      await api('auth/logout', {});
+      setUser(null);
+      navigate('/login');
+    } catch (e) {
+      setToast({ tone: 'error', title: 'Belum bisa keluar', message: (e as Error).message });
+    }
+  };
+  if (owner && ['onboarding', 'approval'].includes(page))
     return (
       <>
-        <SetupPage data={data} approval={page === 'approval'}>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          {setupPanel()}
-        </SetupPage>
-        {modal}
+        {data ? (
+          <Onboarding
+            data={data}
+            user={user}
+            reload={reload}
+            logout={logout}
+            startAtSummary={page === 'approval'}
+          />
+        ) : (
+          <p className="loading" role="status">
+            {error || 'Memuat data setup…'}
+          </p>
+        )}
         {toastView}
       </>
     );
@@ -1278,15 +1131,7 @@ export function Workspace() {
         setMenu={setMenu}
         search={search}
         setSearch={setSearch}
-        logout={async () => {
-          try {
-            await api('auth/logout', {});
-            setUser(null);
-            navigate('/login');
-          } catch (e) {
-            setToast({ tone: 'error', title: 'Belum bisa keluar', message: (e as Error).message });
-          }
-        }}
+        logout={logout}
       >
         {owner && data && !page && <SetupBanner data={data} />}
         <PageTitle user={user} page={page} orgName={data?.org.name}>
@@ -1373,7 +1218,7 @@ export function Workspace() {
           )
         ) : data &&
           page &&
-          !['bookings', 'calendar', 'outlets', ...(!owner ? ['shifts'] : [])].includes(page) ? (
+          !['bookings', 'calendar', 'outlets', 'new', ...(!owner ? ['shifts'] : [])].includes(page) ? (
           <ManagementView key={page} data={data} page={page} user={user} outletFilter={outletFilter}>
             {renderApp()}
           </ManagementView>

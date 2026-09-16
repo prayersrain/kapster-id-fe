@@ -12,6 +12,8 @@
 # Build dan testing
 /dist/
 /coverage/
+/playwright-report/
+/blob-report/
 
 # Environment dan rahasia
 .env

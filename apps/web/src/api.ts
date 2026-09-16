@@ -73,6 +73,7 @@ export const dayLabel = (date: string) => {
   return offset === 0 ? 'Hari ini' : offset === 1 ? 'Besok' : offset === -1 ? 'Kemarin' : shortDate(date);
 };
 export { bookingLink } from './links';
+export const WEEKDAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 export const labels: Record<string, string> = {
   draft: 'Draft',
   pending: 'Menunggu review',

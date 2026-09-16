@@ -115,6 +115,13 @@ test('public booking, role boundaries, cash shift, refund, snapshot, and restart
   );
   assert.ok(moveSlots.slots.includes(input.time));
   assert.equal((await request('app/org', { slug: 'garasi-baru' }, owner, 'PATCH')).status, 409);
+  // Resending an unchanged locked link (as a profile form does) is not a change.
+  assert.equal(
+    (await ok('app/org', { slug: 'garasi-barber' }, owner, 'PATCH')).message,
+    'Tidak ada perubahan.',
+  );
+  assert.equal((await request('app/org', { name: 'Garasi Barber Baru' }, owner, 'PATCH')).status, 409);
+  assert.equal((await request('app/org', {}, owner, 'PATCH')).status, 400);
   assert.equal('phone' in detail, false);
   assert.equal(
     (await request(`app/bookings/${booking.id}/pay`, { tendered: service.price }, cashier)).status,
@@ -227,7 +234,8 @@ test('registration, token replay, onboarding review, tenant isolation and suspen
   assert.equal(secondData.org.slug, 'bisnis-kedua');
   assert.equal((await request('app/org', { slug: 'garasi-barber' }, second, 'PATCH')).status, 409);
   assert.equal((await request('app/org', { slug: 'Bad Slug!' }, second, 'PATCH')).status, 400);
-  await ok('app/org', { slug: 'kedua-barber' }, second, 'PATCH');
+  await ok('app/org', { name: 'Bisnis Kedua Barber', slug: 'kedua-barber' }, second, 'PATCH');
+  assert.equal((await ok('app/data', undefined, second)).org.name, 'Bisnis Kedua Barber');
   secondData.org.slug = 'kedua-barber';
   const foreign = firstData.outlets[0];
   assert.equal(
@@ -265,6 +273,7 @@ test('registration, token replay, onboarding review, tenant isolation and suspen
     403,
   );
   await ok('app/approval', {}, second);
+  assert.equal((await request('app/org', { name: 'Ganti Saat Review' }, second, 'PATCH')).status, 409);
   await ok(
     `admin/orgs/${secondData.org.id}/status`,
     { status: 'approved', reason: 'Data onboarding lengkap' },

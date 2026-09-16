@@ -730,10 +730,6 @@
   border-color: #ddd8d1;
   border-radius: 6px;
 }
-.internal-booking .logo-lockup,
-.internal-booking .logo-lockup svg {
-  color: #151619;
-}
 
 @media (max-width: 860px) {
   .toast {

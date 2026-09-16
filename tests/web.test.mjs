@@ -60,3 +60,83 @@ test('overlapping bookings sit side by side and separate clusters reset the lane
   assert.deepEqual([byId.a.count, byId.b.count, byId.c.count], [3, 3, 3]);
   assert.deepEqual([byId.d.lane, byId.d.count], [0, 1]);
 });
+
+import { createRequire } from 'node:module';
+import { customerErrors, normalizePhone } from '../apps/web/src/bookingRules.ts';
+import { setupProgress } from '../apps/web/src/setupRules.ts';
+const require = createRequire(import.meta.url);
+
+test('walk-in and public booking accept exactly the customers the API accepts', () => {
+  // Built API schema (npm test runs build:api first), so the UI cannot drift from the server rule.
+  const { bookingInput } = require('../apps/api/dist/validation.js');
+  const base = {
+    outletId: '00000000-0000-4000-8000-000000000001',
+    serviceId: '00000000-0000-4000-8000-000000000002',
+    barberId: '00000000-0000-4000-8000-000000000003',
+    date: '2030-01-02',
+    time: '10:00',
+  };
+  const names = ['A', 'Ab', '  Ab  ', 'Budi Santoso', 'x'.repeat(120), 'x'.repeat(121)];
+  const phones = [
+    '081234567890',
+    '+62 812-3456-7890',
+    '6281234567',
+    '08123',
+    '0812345678901234',
+    '021234567890',
+    '',
+    'abc',
+  ];
+  for (const name of names)
+    for (const phone of phones) {
+      const server = bookingInput.safeParse({ ...base, name, phone }).success;
+      const errors = customerErrors({ name, phone });
+      assert.equal(
+        !errors.name && !errors.phone,
+        server,
+        `name=${JSON.stringify(name)} phone=${JSON.stringify(phone)}`,
+      );
+    }
+  assert.equal(normalizePhone('0812-3456 7890'), '6281234567890');
+});
+
+test('setup readiness mirrors the approval rule for every active outlet', () => {
+  const org = { name: 'Barber', slug: 'barber', status: 'draft' };
+  const outlet = (id, active = 1) => ({ id, name: `Outlet ${id}`, active, published: 0 });
+  const base = { org, team: [], outlets: [outlet('a'), outlet('b'), outlet('c', 0)] };
+  const partial = setupProgress({
+    ...base,
+    services: [
+      { outletId: 'a', active: 1 },
+      { outletId: 'b', active: 0 },
+    ],
+    barbers: [
+      { outletId: 'a', active: 1 },
+      { outletId: 'b', active: 1 },
+    ],
+  });
+  assert.equal(partial.ready, false);
+  assert.deepEqual(partial.missing, ['Outlet b belum punya layanan aktif.']);
+  // Inactive outlets are ignored, exactly like POST app/approval.
+  const ready = setupProgress({
+    ...base,
+    services: [
+      { outletId: 'a', active: 1 },
+      { outletId: 'b', active: 1 },
+    ],
+    barbers: [
+      { outletId: 'a', active: 1 },
+      { outletId: 'b', active: 1 },
+    ],
+  });
+  assert.equal(ready.ready, true);
+  assert.equal(ready.canSubmit, true);
+  assert.equal(
+    setupProgress({ ...base, outlets: [], services: [], barbers: [] }).missing[0],
+    'Tambahkan outlet pertama.',
+  );
+  assert.equal(
+    setupProgress({ ...base, org: { ...org, status: 'pending' }, services: [], barbers: [] }).canSubmit,
+    false,
+  );
+});
